@@ -33,7 +33,7 @@ ssize_t reader_t::prepare_error_string(
         reader_t::errcode_t code,
         va_list va) const
 {
-  __int64 len;
+  int len;
   switch ( code )
   {
     case BAD_CLASS:
@@ -571,9 +571,9 @@ FAILED:
   {
     uint64 sections_start  = header.e_shoff;
     uint64 sections_finish = header.e_shoff + uint64(header.real_shnum) * header.e_shentsize;
-    if ( sections_start > sections_finish || sections_finish > uint64(size()) )
+    if ( sections_start > sections_finish || sections_finish > size() )
     {
-      if ( !handle_error(*this, BAD_SHLOC, header.real_shnum, header.e_shoff, uint64(size())) )
+      if ( !handle_error(*this, BAD_SHLOC, header.real_shnum, header.e_shoff, size()) )
         goto FAILED;
       header.set_no_sht(); // do not use sht
     }
@@ -2270,7 +2270,7 @@ bool elf_note_t::unpack_strz(qstring *out, const bytevec_t &buf, uint32 start, u
     return false;
   out->qclear();
   out->reserve(len);
-  for ( uint32 i=0; i < len; ++i )
+  for ( int i=0; i < len; ++i )
   {
     char ch = buf[start + i];
     if ( ch == '\0' )
