@@ -33,7 +33,7 @@ ssize_t reader_t::prepare_error_string(
         reader_t::errcode_t code,
         va_list va) const
 {
-  int len;
+  __int64 len;
   switch ( code )
   {
     case BAD_CLASS:
@@ -571,9 +571,9 @@ FAILED:
   {
     uint64 sections_start  = header.e_shoff;
     uint64 sections_finish = header.e_shoff + uint64(header.real_shnum) * header.e_shentsize;
-    if ( sections_start > sections_finish || sections_finish > size() )
+    if ( sections_start > sections_finish || sections_finish > uint64(size()) )
     {
-      if ( !handle_error(*this, BAD_SHLOC, header.real_shnum, header.e_shoff, size()) )
+      if ( !handle_error(*this, BAD_SHLOC, header.real_shnum, header.e_shoff, uint64(size())) )
         goto FAILED;
       header.set_no_sht(); // do not use sht
     }
@@ -1678,7 +1678,7 @@ bool reader_t::parse_dynamic_info(
             : dyn->d_tag == DT_VERDEF        ? DIT_VERDEF
             : dyn->d_tag == DT_VERNEED       ? DIT_VERNEED
             : dyn->d_tag == DT_VERSYM        ? DIT_VERSYM
-            : dyn->d_tag == DT_SCE_JMPREL    ? DIT_JMPREL
+            : dyn->d_tag == DT_SCE_JMPREL    ? DIT_JMPREL // PS4
             :                                  DIT_TYPE_COUNT;
     if ( di_type != DIT_TYPE_COUNT )
     {
@@ -2270,7 +2270,7 @@ bool elf_note_t::unpack_strz(qstring *out, const bytevec_t &buf, uint32 start, u
     return false;
   out->qclear();
   out->reserve(len);
-  for ( int i=0; i < len; ++i )
+  for ( uint32 i=0; i < len; ++i )
   {
     char ch = buf[start + i];
     if ( ch == '\0' )
@@ -2623,7 +2623,7 @@ const char *dynamic_info_t::d_tag_str_ext(const reader_t &reader, int64 d_tag)
       ext = "tot.size in bytes of relocation entries";
       break;
     case DT_HASH:
-      ext = "addr. of symbol hash table";
+      ext = "addr of symbol hash table";
       break;
     case DT_STRTAB:
       ext = "addr of string table";
@@ -2647,10 +2647,10 @@ const char *dynamic_info_t::d_tag_str_ext(const reader_t &reader, int64 d_tag)
       ext = "size in bytes of symbol table entry";
       break;
     case DT_INIT:
-      ext = "addr. of initialization function";
+      ext = "addr of initialization function";
       break;
     case DT_FINI:
-      ext = "addr. of termination function";
+      ext = "addr of termination function";
       break;
     case DT_SONAME:
       ext = "offs in str.-table - name of shared object";

@@ -37,6 +37,8 @@ qstring ph_type_to_string(uint32 p_type)
 	case PT_SCE_PROCPARAM: return "PT_SCE_PROCPARAM";
 	case PT_SCE_MODULEPARAM: return "PT_SCE_MODULEPARAM";
 	case PT_SCE_RELRO: return "PT_SCE_RELRO";
+	case PT_SCE_COMMENT: return "PT_SCE_COMMENT";
+	case PT_SCE_LIBVERSION: return "PT_SCE_LIBVERSION";
 	}
 
 	qstring ret;
@@ -82,14 +84,17 @@ qstring dyntag_to_string(uint64 tag)
 	case DT_ENCODING: return "DT_ENCODING";
 	case DT_PREINIT_ARRAY: return "DT_PREINIT_ARRAY";
 	case DT_PREINIT_ARRAYSZ: return "DT_PREINIT_ARRAYSZ";
-	case DT_LOOS: return "DT_LOOS";
-	case DT_HIOS: return "DT_HIOS/DT_VERNEEDNUM";
-	case DT_SUNW_AUXILIARY: return "DT_SUNW_AUXILIARY";
-	case DT_SUNW_RTLDINF: return "DT_SUNW_RTLDINF/DT_SUNW_FILTER";
+
+	case DT_LOOS: return "OLD_DT_LOOS";
+    case DT_SCE_HIOS: return "DT_HIOS/DT_VERNEEDNUM";
+	case DT_HIOS: return "OLD_DT_HIOS";
+
+	case DT_SUNW_AUXILIARY: return "DT_LOOS / DT_SUNW_AUXILIARY";
+	case DT_SUNW_RTLDINF: return "DT_SUNW_RTLDINF / DT_SUNW_FILTER";
 	case DT_SUNW_CAP: return "DT_SUNW_CAP";
 	case DT_SUNW_SYMTAB: return "DT_SUNW_SYMTAB";
 	case DT_SUNW_SYMSZ: return "DT_SUNW_SYMSZ";
-	case DT_SUNW_ENCODING: return "DT_SUNW_ENCODING/DT_SUNW_SORTENT";
+	case DT_SUNW_ENCODING: return "DT_SUNW_ENCODING / DT_SUNW_SORTENT";
 	case DT_SUNW_SYMSORT: return "DT_SUNW_SYMSORT";
 	case DT_SUNW_SYMSORTSZ: return "DT_SUNW_SYMSORTSZ";
 	case DT_SUNW_TLSSORT: return "DT_SUNW_TLSSORT";
@@ -105,7 +110,8 @@ qstring dyntag_to_string(uint64 tag)
 	case DT_SUNW_RELAX: return "DT_SUNW_RELAX";
 	case DT_SUNW_NXHEAP: return "DT_SUNW_NXHEAP";
 	case DT_SUNW_NXSTACK: return "DT_SUNW_NXSTACK";
-	case DT_VALRNGLO: return "DT_VALRNGLO";
+
+    case DT_VALRNGLO: return "DT_VALRNGLO";
 	case DT_GNU_PRELINKED: return "DT_GNU_PRELINKED";
 	case DT_GNU_CONFLICTSZ: return "DT_GNU_CONFLICTSZ";
 	case DT_GNU_LIBLISTSZ: return "DT_GNU_LIBLISTSZ";
@@ -116,7 +122,9 @@ qstring dyntag_to_string(uint64 tag)
 	case DT_FEATURE: return "DT_FEATURE";
 	case DT_POSFLAG_1: return "DT_POSFLAG_1";
 	case DT_SYMINSZ: return "DT_SYMINSZ";
-	case DT_SYMINENT: return "DT_SYMINENT/DT_VALRNGHI";
+	case DT_SYMINENT: return "DT_SYMINENT / DT_VALRNGHI";
+	//DT_VALRNGHI
+
 	case DT_ADDRRNGLO: return "DT_ADDRRNGLO";
 	case DT_GNU_HASH: return "DT_GNU_HASH";
 	case DT_TLSDESC_PLT: return "DT_TLSDESC_PLT";
@@ -128,19 +136,27 @@ qstring dyntag_to_string(uint64 tag)
 	case DT_AUDIT: return "DT_AUDIT";
 	case DT_PLTPAD: return "DT_PLTPAD";
 	case DT_MOVETAB: return "DT_MOVETAB";
-	case DT_SYMINFO: return "DT_SYMINFO/DT_ADDRRNGHI";
+	case DT_SYMINFO: return "DT_SYMINFO / DT_ADDRRNGHI";
+	//DT_ADDRRNGHI
+
 	case DT_RELACOUNT: return "DT_RELACOUNT";
 	case DT_RELCOUNT: return "DT_RELCOUNT";
 	case DT_FLAGS_1: return "DT_FLAGS_1";
 	case DT_VERDEF: return "DT_VERDEF";
 	case DT_VERDEFNUM: return "DT_VERDEFNUM";
 	case DT_VERNEED: return "DT_VERNEED";
-	case DT_VERSYM: return "DT_VERSYM";
-	case DT_LOPROC: return "DT_LOPROC";
-	case DT_HIPROC: return "DT_HIPROC";
-	case DT_AUXILIARY: return "DT_AUXILIARY/DT_FILTER";
-	case DT_USED: return "DT_USED";
+	//DT_VERNEEDNUM
 
+	case DT_VERSYM: return "DT_VERSYM";
+
+	case DT_LOPROC: return "DT_LOPROC";
+	case DT_HIPROC: return "DT_HIPROC / DT_FILTER";
+
+	case DT_AUXILIARY: return "DT_AUXILIARY";
+	case DT_USED: return "DT_USED";
+	//DT_FILTER
+
+	case DT_SCE_IDTABENTSZ: return "DT_SCE_IDTABENTSZ";
 	case DT_SCE_FINGERPRINT: return "DT_SCE_FINGERPRINT";
 	case DT_SCE_ORIGINAL_FILENAME: return "DT_SCE_ORIGINAL_FILENAME";
 	case DT_SCE_MODULE_INFO: return "DT_SCE_MODULE_INFO";

@@ -72,25 +72,25 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <LinkIncremental>true</LinkIncremental>
-    <IncludePath>C:\PS4\7.1.180227\idasdk71\ldr\elf;C:\PS4\7.1.180227\idasdk71\include;$(IncludePath)</IncludePath>
-    <LibraryPath>C:\PS4\7.1.180227\idasdk71\lib\x64_win_vc_64;$(LibraryPath)</LibraryPath>
+    <IncludePath>$(IDA_SDK)\ldr\elf;$(IDA_SDK)\include;$(IncludePath)</IncludePath>
+    <LibraryPath>$(IDA_SDK)\lib\x64_win_vc_64;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
     <TargetName>$(ProjectName)64</TargetName>
-    <IncludePath>C:\PS4\7.1.180227\idasdk71\ldr\elf;C:\PS4\7.1.180227\idasdk71\include;$(IncludePath)</IncludePath>
-    <LibraryPath>C:\PS4\7.1.180227\idasdk71\lib\x64_win_vc_64;$(LibraryPath)</LibraryPath>
+    <IncludePath>$(IDA_SDK)\ldr\elf;$(IDA_SDK)\include;$(IncludePath)</IncludePath>
+    <LibraryPath>$(IDA_SDK)\lib\x64_win_vc_64;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>C:\PS4\7.1.180227\idasdk71\ldr\elf;C:\PS4\7.1.180227\idasdk71\include;$(IncludePath)</IncludePath>
-    <LibraryPath>C:\PS4\7.1.180227\idasdk71\lib\x64_win_vc_64;$(LibraryPath)</LibraryPath>
+    <IncludePath>$(IDA_SDK)\ldr\elf;$(IDA_SDK)\include;$(IncludePath)</IncludePath>
+    <LibraryPath>$(IDA_SDK)\lib\x64_win_vc_64;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
     <TargetName>$(ProjectName)64</TargetName>
-    <IncludePath>C:\PS4\7.1.180227\idasdk71\ldr\elf;C:\PS4\7.1.180227\idasdk71\include;$(IncludePath)</IncludePath>
-    <LibraryPath>C:\PS4\7.1.180227\idasdk71\lib\x64_win_vc_64;$(LibraryPath)</LibraryPath>
+    <IncludePath>$(IDA_SDK)\ldr\elf;$(IDA_SDK)\include;$(IncludePath)</IncludePath>
+    <LibraryPath>$(IDA_SDK)\lib\x64_win_vc_64;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>

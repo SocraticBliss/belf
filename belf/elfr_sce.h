@@ -11,14 +11,16 @@
 enum elf_ET_SCE
 {
 	ET_SCE_EXEC = 0xfe00,  // PS4 Executable
-	ET_SCE_DYNEXEC = 0xfe10,  // PS4 Main module
 	ET_SCE_RELEXEC = 0xfe04,  // PS4 Reloacatable PRX
 	ET_SCE_STUBLIB = 0xfe0c,  // PS4 Stub library
+	ET_SCE_DYNEXEC = 0xfe10,  // PS4 Main module
 	ET_SCE_DYNAMIC = 0xfe18,  // PS4 Dynamic PRX
 };
 
 enum elf_DTAG_SCE
 {
+	DT_SCE_HIOS = 0x6ffff000,
+	DT_SCE_IDTABENTSZ = 0x61000005,
 	DT_SCE_FINGERPRINT = 0x61000007,
 	DT_SCE_ORIGINAL_FILENAME = 0x61000009,
 	DT_SCE_MODULE_INFO = 0x6100000d,
@@ -54,6 +56,8 @@ enum elf_SEGTYPE_SCE
 	PT_SCE_PROCPARAM = 0x61000001,
 	PT_SCE_MODULEPARAM = 0x61000002,
 	PT_SCE_RELRO = 0x61000010,
+	PT_SCE_COMMENT = 0x6fffff00,
+	PT_SCE_LIBVERSION = 0x6fffff01
 };
 
 /* Relocation types for AMD x86-64 architecture */
@@ -100,5 +104,7 @@ to GOT entry for IE symbol */
 #define R_X86_64_IRELATIVE       37 /* Adjust indirectly by program base */
 #define R_X86_64_RELATIVE64      38 /* 64bit adjust by program base */
 #define R_X86_64_ORBIS_GOTPCREL_LOAD   40
+#define R_X86_64_GNU_VTINHERIT   250
+#define R_X86_64_GNU_VTENTRY     251
 
 #endif
