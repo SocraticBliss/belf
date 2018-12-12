@@ -98,7 +98,8 @@ qstring DynLib::deobfuscate(qstring lib, qstring obf)
 {
 	for (const dynlib_entry& entry : m_entries)
 	{
-		if (entry.lib == lib && obf.substr(0, 11) == entry.obf)
+		//msg("obf: %s entry.obf: %s\n", obf, entry.obf);
+		if (obf.substr(0, 11) == entry.obf)
 			return entry.sym;
 	}
 
