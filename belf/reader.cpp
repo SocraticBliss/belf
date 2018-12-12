@@ -51,13 +51,13 @@ ssize_t reader_t::prepare_error_string(
         int endian = va_arg(va, int);
         if ( endian != ELFDATA2LSB && endian != ELFDATA2MSB )
           len = qsnprintf(buf, bufsize,
-                          "Unknown ELF byte sex %d (should be %d for LSB, %d for MSB)",
+                          "Unknown ELF endian %d (should be %d for LSB, %d for MSB)",
                           endian,
                           ELFDATA2LSB,
                           ELFDATA2MSB);
         else
           len = qsnprintf(buf, bufsize,
-                          "Bad ELF byte sex %d for the indicated machine",
+                          "Bad ELF endian %d for the indicated machine",
                           endian);
       }
       break;
@@ -1079,26 +1079,26 @@ const char *reader_t::file_type_str() const
       break;
     case ET_PSPEXEC:
       if ( header.e_machine == EM_MIPS )
-        file_type = "PSP executable";
+        file_type = "PSP Executable";
       break;
     case ET_PS3PRX:
       if ( header.e_machine == EM_PPC64 )
-        file_type = "Sony PS3 PRX file";
+        file_type = "PS3 PRX";
       break;
 	case ET_SCE_EXEC:
-		file_type = "Sony PS4 Executable";
+		file_type = "PS4 Executable";
 		break;
 	case ET_SCE_DYNEXEC:
-		file_type = "Sony PS4 Main module";
+		file_type = "PS4 Dynamic Executable";
 		break;
 	case ET_SCE_RELEXEC:
-		file_type = "Sony PS4  PS4 Reloacatable PRX";
+		file_type = "PS4 Reloacatable Executable";
 		break;
 	case ET_SCE_STUBLIB:
-		file_type = "Sony PS4 Stub library";
+		file_type = "PS4 Stub Library";
 		break;
 	case ET_SCE_DYNAMIC:
-		file_type = "Sony PS4 Dynamic PRX";
+		file_type = "PS4 Dynamic PRX";
 		break;
   }
   return file_type;
@@ -1610,7 +1610,7 @@ bool reader_t::read_symbol_versions(
   {
     input_status_t save_excursion(*this);
     if ( save_excursion.seek(sh.sh_offset) != -1 )
-      for ( size_t i = 0; i < sh.sh_size / sizeof(uint16); i++ )
+      for ( size_t i = 0; i < (sh.sh_size / sizeof(uint16)); i++ )
         if ( read_half(&symver->symbols.push_back()) < 0 )
           break;
   }
@@ -1668,7 +1668,6 @@ bool reader_t::parse_dynamic_info(
             : dyn->d_tag == DT_REL           ? DIT_REL
             : dyn->d_tag == DT_RELA          ? DIT_RELA
             : dyn->d_tag == DT_SCE_RELA      ? DIT_RELA // PS4
-            : dyn->d_tag == DT_JMPREL        ? DIT_PLT
             : dyn->d_tag == DT_HASH          ? DIT_HASH
             : dyn->d_tag == DT_SCE_HASH      ? DIT_HASH // PS4
             : dyn->d_tag == DT_GNU_HASH      ? DIT_GNU_HASH
@@ -1678,6 +1677,7 @@ bool reader_t::parse_dynamic_info(
             : dyn->d_tag == DT_VERDEF        ? DIT_VERDEF
             : dyn->d_tag == DT_VERNEED       ? DIT_VERNEED
             : dyn->d_tag == DT_VERSYM        ? DIT_VERSYM
+            : dyn->d_tag == DT_JMPREL        ? DIT_JMPREL
             : dyn->d_tag == DT_SCE_JMPREL    ? DIT_JMPREL // PS4
             :                                  DIT_TYPE_COUNT;
     if ( di_type != DIT_TYPE_COUNT )
@@ -1691,6 +1691,7 @@ bool reader_t::parse_dynamic_info(
 
     di_type = dyn->d_tag == DT_STRSZ           ? DIT_STRTAB
             : dyn->d_tag == DT_SCE_STRSZ       ? DIT_STRTAB // PS4
+			: dyn->d_tag == DT_SCE_SYMTABSZ    ? DIT_SYMTAB // PS4
             : dyn->d_tag == DT_RELSZ           ? DIT_REL
             : dyn->d_tag == DT_RELASZ          ? DIT_RELA
             : dyn->d_tag == DT_SCE_RELASZ      ? DIT_RELA // PS4
@@ -1699,7 +1700,6 @@ bool reader_t::parse_dynamic_info(
             : dyn->d_tag == DT_PREINIT_ARRAYSZ ? DIT_PREINIT_ARRAY
             : dyn->d_tag == DT_INIT_ARRAYSZ    ? DIT_INIT_ARRAY
             : dyn->d_tag == DT_FINI_ARRAYSZ    ? DIT_FINI_ARRAY
-            : dyn->d_tag == DT_SCE_SYMTABSZ    ? DIT_SYMTAB // PS4
             : dyn->d_tag == DT_SCE_PLTRELSZ    ? DIT_JMPREL // PS4
             :                                    DIT_TYPE_COUNT;
     if ( di_type != DIT_TYPE_COUNT )
@@ -1732,6 +1732,7 @@ bool reader_t::parse_dynamic_info(
     switch ( dyn->d_tag )
     {
       case DT_PLTREL:
+      case DT_SCE_PLTREL:
         dyninfo->plt_rel_type = uint32(dyn->d_un);
         if ( dyninfo->plt_rel_type != DT_REL && dyninfo->plt_rel_type != DT_RELA )
         {
@@ -1740,14 +1741,29 @@ bool reader_t::parse_dynamic_info(
         }
         continue;
 
-      case DT_INIT:
+	  case DT_PLTGOT:
+	  case DT_SCE_PLTGOT:
+	  case DT_DEBUG:
+	  case DT_FLAGS:
+	  case DT_NEEDED:
+	  case DT_SCE_NEEDED_MODULE:
+	  case DT_SONAME:
+	  case DT_INIT:
       case DT_FINI:
-      case DT_PLTGOT:
+	  case DT_SCE_EXPORT_LIB:
+	  case DT_SCE_EXPORT_LIB_ATTR:
+	  case DT_SCE_IMPORT_LIB:
+	  case DT_SCE_IMPORT_LIB_ATTR:
+	  case DT_SCE_FINGERPRINT:
+	  case DT_SCE_ORIGINAL_FILENAME:
+	  case DT_SCE_MODULE_INFO:
+	  case DT_SCE_MODULE_ATTR:
+	  
         offsets.push_back(file_offset(dyn->d_un));
         continue;
 
       default:
-		  msg("UNHANDELD: tag: %s \t un: %016llx\n", dyntag_to_string(dyn->d_tag).c_str(), dyn->d_un);
+        msg("UNHANDLED: tag: %s \t un: %016llx\n", dyntag_to_string(dyn->d_tag).c_str(), dyn->d_un);
         continue;
 
       case DT_NULL:

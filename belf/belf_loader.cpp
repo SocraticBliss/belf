@@ -59,7 +59,7 @@ uint16 load_elf(reader_t *reader)
 	reader->set_handler(load_handler);
 
 	if (!reader->read_ident() || !reader->read_header())
-		loader_failure("Failed reading ELF header");
+		loader_failure("Failed reading ELF header!");
 
 	if (reader->is_msb())
 		inf.lflags |= LFLG_MSF;
@@ -163,9 +163,11 @@ void load_jmprel(reader_t &reader, elf_phdr_t &dyndata, dynamic_info_t::entry_t 
 	elf_rela_t *jmprel = new elf_rela_t[jmprel_entry.size / sizeof(elf_rela_t)];
 	reader.seek(dyndata.p_offset + jmprel_entry.addr);
 	if (reader.safe_read(jmprel, jmprel_entry.size, false) != 0)
-		loader_failure("failed to read jmprel");
+		loader_failure("Failed reading jmprel!");
 
-	for (size_t i = 0; i < jmprel_entry.size / sizeof(elf_rela_t); i++)
+	//msg("dyninfo.symtab().size: 0x%llx\n", jmprel_entry.size);
+	//msg("sizeof(elf_rela_t):    0x%llx\n", sizeof(elf_rela_t));
+	for (size_t i = 0; i < (jmprel_entry.size / sizeof(elf_rela_t)); i++)
 	{
 		int type = reader.rel_info_type(jmprel[i]);
 		int idx = reader.rel_info_index(jmprel[i]);
@@ -175,8 +177,7 @@ void load_jmprel(reader_t &reader, elf_phdr_t &dyndata, dynamic_info_t::entry_t 
 			continue;
 		}
 
-		if (idx >= jmprel_entry.size / sizeof(elf_sym_t)) {
-			msg("dyninfo.symtab().size: %x\n", jmprel_entry.size);
+		if (idx >= (jmprel_entry.size / sizeof(elf_sym_t))) {
 			msg("Invalid symbol index %i for relocation %i\n", idx, i);
 			continue;
 		}
@@ -249,9 +250,9 @@ void load_rela(reader_t &reader, elf_phdr_t &dyndata, dynamic_info_t::entry_t &r
 	elf_rela_t *rela = new elf_rela_t[rela_entry.size / sizeof(elf_rela_t)];
 	reader.seek(dyndata.p_offset + rela_entry.addr);
 	if (reader.safe_read(rela, rela_entry.size, false) != 0)
-		loader_failure("failed to read rela");
+		loader_failure("Failed reading rela!");
 
-	for (int i = 0; i < rela_entry.size / sizeof(elf_sym_t); i++)
+	for (int i = 0; i < (rela_entry.size / sizeof(elf_sym_t)); i++)
 	{
 		int type = reader.rel_info_type(rela[i]);
 		int idx = reader.rel_info_index(rela[i]);
@@ -299,10 +300,11 @@ void idaapi elf_load_file(linput_t *li, ushort neflags, const char *fileformatna
 	debug = IDA_DEBUG_ALWAYS;
 #endif
 
+	msg("\nLoading dynlib.xml database file...");
 	char db[QMAXPATH];
 	if (getsysfile(db, QMAXPATH, "dynlib.xml", LDR_SUBDIR) == NULL)
-		loader_failure("Could not find dynlib database file.");
-
+		loader_failure("Could not find dynlib.xml database file!");
+	msg("OK\n");
 	DynLib dynlib(db);
 
 	reader_t reader(li);
@@ -313,17 +315,17 @@ void idaapi elf_load_file(linput_t *li, ushort neflags, const char *fileformatna
 	inf.baseaddr = 0;
 	inf.specsegs = reader.is_64() ? 8 : 4;
 
+	msg("\n[BELF] Reading Program Headers...\n");
 	if (reader.get_header().e_phoff)
 		add_test_feature("pht");
+	else
+		loader_failure("Missing program headers!");
+
+	if (!reader.read_program_headers())
+		loader_failure("Failed reading program headers!");
 
 	if (reader.get_header().e_shoff)
 		add_test_feature("sht");
-
-	if (!reader.get_header().e_phoff)
-		loader_failure("Missing program headers");
-
-	if (!reader.read_program_headers())
-		loader_failure("Failed reading program headers");
 
 	set_imagebase(reader.pheaders.get_image_base());
 
@@ -332,72 +334,78 @@ void idaapi elf_load_file(linput_t *li, ushort neflags, const char *fileformatna
 	for (int i = 0; i < reader.pheaders.size(); i++)
 	{
 		elf_phdr_t *phdr = reader.pheaders.get(i);
-
+		
 		switch (phdr->p_type)
 		{
-		case PT_LOAD:
-		{
-			const char *name = phdr->p_flags & PF_X ? "CODE" : "DATA";
-			uchar type = phdr->p_flags & PF_X ? SEG_CODE : SEG_DATA;
+			case PT_LOAD:
+			{
+				const char *name = phdr->p_flags & PF_X ? "CODE" : "DATA";
+				uchar type = phdr->p_flags & PF_X ? SEG_CODE : SEG_DATA;
+				
+				msg("%s:\n", ph_type_to_string(phdr->p_type).c_str());
+				createSegment(name, phdr->p_flags, reader.get_seg_bitness(), type, phdr->p_vaddr, phdr->p_vaddr + phdr->p_memsz);
 
-			createSegment(name, phdr->p_flags, reader.get_seg_bitness(), type, phdr->p_vaddr, phdr->p_vaddr + phdr->p_memsz);
+				file2base(li, phdr->p_offset, phdr->p_vaddr, phdr->p_vaddr + phdr->p_filesz, FILEREG_PATCHABLE);
+				break;
+			}
+			case PT_SCE_RELRO:
+			{
+				msg("%s:\n", ph_type_to_string(phdr->p_type).c_str());
+				createSegment(".relro", phdr->p_flags, reader.get_seg_bitness(), SEG_XTRN, phdr->p_vaddr, phdr->p_vaddr + phdr->p_memsz);
 
-			file2base(li, phdr->p_offset, phdr->p_vaddr, phdr->p_vaddr + phdr->p_filesz, FILEREG_PATCHABLE);
-			break;
-		}
-		case PT_SCE_RELRO:
-		{
-			createSegment(".relro", phdr->p_flags, reader.get_seg_bitness(), SEG_XTRN, phdr->p_vaddr, phdr->p_vaddr + phdr->p_memsz);
+				file2base(li, phdr->p_offset, phdr->p_vaddr, phdr->p_vaddr + phdr->p_filesz, FILEREG_PATCHABLE);
+				break;
+			}
+			case PT_GNU_EH_FRAME:
+			{
+				msg("%s:\n", ph_type_to_string(phdr->p_type).c_str());
+				createSegment(".eh_frame", phdr->p_flags, reader.get_seg_bitness(), SEG_DATA, phdr->p_vaddr, phdr->p_vaddr + phdr->p_memsz);
 
-			file2base(li, phdr->p_offset, phdr->p_vaddr, phdr->p_vaddr + phdr->p_filesz, FILEREG_PATCHABLE);
-			break;
-		}
-		case PT_GNU_EH_FRAME:
-		{
-			createSegment(".eh_frame", phdr->p_flags, reader.get_seg_bitness(), SEG_DATA, phdr->p_vaddr, phdr->p_vaddr + phdr->p_memsz);
+				file2base(li, phdr->p_offset, phdr->p_vaddr, phdr->p_vaddr + phdr->p_filesz, FILEREG_PATCHABLE);
+				break;
+			}
+			case PT_SCE_DYNLIBDATA:
+			{
+				msg("%s:\n", ph_type_to_string(phdr->p_type).c_str());
+				dyndata = *phdr;
+				break;
+			}
 
-			file2base(li, phdr->p_offset, phdr->p_vaddr, phdr->p_vaddr + phdr->p_filesz, FILEREG_PATCHABLE);
-			break;
-		}
-		case PT_SCE_DYNLIBDATA:
-			dyndata = *phdr;
-			break;
-
-		default:
-			msg("pheader!\n");
-			msg("  p_type: %s\n", ph_type_to_string(phdr->p_type).c_str());
-			msg("  p_flags: 0x%x\n", phdr->p_flags);
-			msg("  p_offset: 0x%llx\n", phdr->p_offset);
-			msg("  p_vaddr: 0x%llx\n", phdr->p_vaddr);
-			msg("  p_paddr: 0x%llx\n", phdr->p_paddr);
-			msg("  p_filesz: 0x%llx\n", phdr->p_filesz);
-			msg("  p_memsz: 0x%llx\n", phdr->p_memsz);
-			msg("  p_align: 0x%llx\n", phdr->p_align);
+			default:
+				msg("%s:\n", ph_type_to_string(phdr->p_type).c_str());
+				msg("  p_flags:  0x%llx\n", phdr->p_flags);
+				msg("  p_offset: 0x%llx\n", phdr->p_offset);
+				msg("  p_vaddr:  0x%llx\n", phdr->p_vaddr);
+				msg("  p_paddr:  0x%llx\n", phdr->p_paddr);
+				msg("  p_filesz: 0x%llx\n", phdr->p_filesz);
+				msg("  p_memsz:  0x%llx\n", phdr->p_memsz);
+				msg("  p_align:  0x%llx\n", phdr->p_align);
 		}
 	}
 
 	inf.start_ip = get_imagebase() + reader.get_header().e_entry;
 	inf.start_cs = getseg(inf.start_ip)->sel;
-	msg("entry point: 0x%x\n", reader.get_header().e_entry);
+	msg("\nEntry Address: 0x%llx \n", reader.get_header().e_entry);
 
+	msg("\n[BELF] Reading Dynamic Tags...\n");
 	reader_t::dyninfo_tags_t dyninfo_tags;
 	dynamic_info_t dyninfo;
 	if (!reader.read_dynamic_info_tags(&dyninfo_tags, reader.pheaders.get_dynamic_linking_tables_info()) ||
 		!reader.parse_dynamic_info(&dyninfo, dyninfo_tags))
-		loader_failure("Failed to read / parse dynamic info");
+		loader_failure("Failed reading dyninfo!");
 
 	if (dyninfo.strtab().addr + dyninfo.strtab().size > dyndata.p_filesz)
-		loader_failure("strtab is out of dyndata");
+		loader_failure("strtab is out of dyndata!");
 
 	char *strtab = new char[dyninfo.strtab().size];
 	reader.seek(dyndata.p_offset + dyninfo.strtab().addr);
 	if (reader.safe_read(strtab, dyninfo.strtab().size, false) != 0)
-		loader_failure("failed to read strtab");
+		loader_failure("Failed reading strtab!");
 
 	elf_sym_t *symtab = new elf_sym_t[dyninfo.symtab().size / sizeof(elf_sym_t)];
 	reader.seek(dyndata.p_offset + dyninfo.symtab().addr);
 	if (reader.safe_read(symtab, dyninfo.symtab().size, false) != 0)
-		loader_failure("failed to read symtab");
+		loader_failure("Failed reading symtab!");
 
 	for (auto dyn = dyninfo_tags.begin(); dyn != dyninfo_tags.end(); ++dyn)
 	{
@@ -410,30 +418,36 @@ void idaapi elf_load_file(linput_t *li, ushort neflags, const char *fileformatna
 		{
 			uint32 mid = dyn->d_un >> 48;
 			uint32 mnameidx = dyn->d_un & 0xFFFFFFFF;
-			msg("DT_SCE_NEEDED_MODULE: %x:%s\n", mid, &strtab[mnameidx]);
+			msg("DT_SCE_NEEDED_MODULE: %d:%s\n", mid, &strtab[mnameidx]);
 
 			dynlib.addModule(mid, mnameidx);
 			break;
 		}
 		case DT_SCE_IMPORT_LIB:
+			msg("DT_SCE_IMPORT_LIB:      0x%llx\n", dyndata.p_offset + dyn->d_un); break;
 		case DT_SCE_EXPORT_LIB:
-			msg("PORT: tag: %08x \t un: %08llx\n", dyn->d_tag, dyndata.p_offset + dyn->d_un); break;
+			msg("DT_SCE_EXPORT_LIB:      0x%llx\n", dyndata.p_offset + dyn->d_un); break;
 		case DT_SCE_IMPORT_LIB_ATTR:
+			msg("DT_SCE_IMPORT_LIB_ATTR: 0x%llx\n", dyn->d_un); break;
 		case DT_SCE_EXPORT_LIB_ATTR:
-			msg("PORT: tag: %08x \t un: %08llx\n", dyn->d_tag, dyn->d_un); break;
+			msg("DT_SCE_EXPORT_LIB_ATTR: 0x%llx\n", dyn->d_un); break;
 		case DT_SCE_MODULE_INFO:
 			dynlib.setSelfModuleStrIndex(dyn->d_un & 0xFFFFFFFF);
 		}
 	}
 
+	msg("\n[BELF] Loading jmprel...\n");
 	load_jmprel(reader, dyndata, dyninfo.jmprel(), symtab, strtab, dynlib);
 
+	msg("\n[BELF] Loading symtab...\n");
 	load_symtab(dyninfo.symtab(), symtab, strtab, dynlib);
 
+	msg("\n[BELF] Loading rela...\n");
 	load_rela(reader, dyndata, dyninfo.rela());
 
 	delete[] symtab;
 	delete[] strtab;
+	msg("\n[BELF] Done!\n");
 
 #ifdef _DEBUG
 	debug = 0;

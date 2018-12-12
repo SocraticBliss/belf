@@ -25,11 +25,11 @@ void DynLib::LoadXML(const char *db)
 
 	TiXmlElement *DynlibDatabase = xml.FirstChildElement();
 	if (!DynlibDatabase || strcmp(DynlibDatabase->Value(), "DynlibDatabase"))
-		loader_failure("Database requires \"DynlibDatabase\" header.");
+		loader_failure("Database requires the \"DynlibDatabase\" header.");
 
 	TiXmlElement *e = DynlibDatabase->FirstChildElement();
 	if (!e)
-		loader_failure("Database has no entries in  \"DynlibDatabase\".");
+		loader_failure("Database has no entries in the \"DynlibDatabase\" header.");
 
 	do {
 		const char *obf = e->Attribute("obf");
@@ -68,18 +68,18 @@ uint32 DynLib::lookup(const char *obf)
 
 	const char *lib = strchr(obf, '#');
 	if (lib == NULL) {
-		msg("No lib id in this symbol.\n");
+		msg("No lib ID in this symbol.\n");
 		return -1;
 	}
 
 	lib = strchr(lib + 1, '#');
 	if (lib == NULL) {
-		msg("No mod id in this symbol.\n");
+		msg("No mod ID in this symbol.\n");
 		return -1;
 	}
 
 	if (decode_base64(lib + 1, &modid)) {
-		msg("Invalid module id!\n");
+		msg("Invalid module ID!\n");
 		return -1;
 	}
 
