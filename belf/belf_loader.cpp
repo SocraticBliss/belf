@@ -446,14 +446,14 @@ void idaapi elf_load_file(linput_t *li, ushort neflags, const char *fileformatna
 		{
 		case DT_INIT: add_entry(reader.get_load_bias() + dyn->d_un, reader.get_load_bias() + dyn->d_un, ".init_proc", true); break;
 		case DT_FINI: add_entry(reader.get_load_bias() + dyn->d_un, reader.get_load_bias() + dyn->d_un, ".term_proc", true); break;
-		case DT_DEBUG: msg("DT_DEBUG \t\t 0x%08llx\n", dyn->d_un); break;
-		case DT_FLAGS: msg("DT_FLAGS \t\t 0x%08llx\n", dyn->d_un); break;
-		case DT_NEEDED: msg("DT_NEEDED \t\t 0x%08llx  Name:%s\n", dyn->d_un, &strtab[dyn->d_un]); break;
+		case DT_DEBUG: msg("DT_DEBUG: \t\t 0x%08llx\n", dyn->d_un); break;
+		case DT_FLAGS: msg("DT_FLAGS: \t\t 0x%08llx\n", dyn->d_un); break;
+		case DT_NEEDED: msg("DT_NEEDED: \t\t 0x%08llx  Name:%s\n", dyn->d_un, &strtab[dyn->d_un]); break;
 		case DT_SCE_NEEDED_MODULE:
 		{
 			mid = dyn->d_un >> 48;
 			mnameidx = dyn->d_un & 0xFFFFFFFF;
-			msg("DT_SCE_NEEDED_MODULE \t 0x%013llx  MID:%x  Name:%s\n", dyn->d_un, mid, &strtab[mnameidx]);
+			msg("DT_SCE_NEEDED_MODULE: \t 0x%013llx  MID:%x  Name:%s\n", dyn->d_un, mid, &strtab[mnameidx]);
 
 			dynlib.addModule(mid, mnameidx);
 			break;
