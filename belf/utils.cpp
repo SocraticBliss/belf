@@ -9,9 +9,9 @@
 #include "elfr_sce.h"
 #include "utils.h"
 
-qstring ph_type_to_string(uint32 type)
+qstring ph_type_to_string(uint32 ph_type)
 {
-	switch (type) {
+	switch (ph_type) {
 	case PT_NULL: return "PT_NULL";
 	case PT_LOAD: return "PT_LOAD";
 	case PT_DYNAMIC: return "PT_DYNAMIC";
@@ -46,13 +46,13 @@ qstring ph_type_to_string(uint32 type)
 	}
 
 	qstring ret;
-	ret.sprnt("UNK_%x", type);
+	ret.sprnt("UNK_%x", ph_type);
 	return ret;
 }
 
-qstring dyntag_to_string(uint64 tag)
+qstring dyntag_to_string(uint64 dyntag)
 {
-	switch (tag) {
+	switch (dyntag) {
 	case DT_NULL: return "DT_NULL";
 	case DT_NEEDED: return "DT_NEEDED";
 	case DT_PLTRELSZ: return "DT_PLTRELSZ";
@@ -190,7 +190,20 @@ qstring dyntag_to_string(uint64 tag)
 	}
 
 	qstring ret;
-	ret.sprnt("UNK_%llx", tag);
+	ret.sprnt("UNK_%llx", dyntag);
+	return ret;
+}
+
+qstring attributes_to_string(uint32 attributes)
+{
+	switch (attributes) {
+	case AT_SCE_AUTO_EXPORT: return "AUTO_EXPORT";
+	case AT_SCE_LOOSE_IMPORT: return "LOOSE_IMPORT";
+	case AT_SCE_AELI: return "AUTO_EXPORT|LOOSE_IMPORT";
+	}
+
+	qstring ret;
+	ret.sprnt("None", attributes);
 	return ret;
 }
 

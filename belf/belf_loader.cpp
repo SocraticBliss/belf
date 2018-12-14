@@ -349,74 +349,35 @@ void idaapi elf_load_file(linput_t *li, ushort neflags, const char *fileformatna
 	for (int i = 0; i < reader.pheaders.size(); i++)
 	{
 		elf_phdr_t *phdr = reader.pheaders.get(i);
-		const char *name;
-		uchar type;
+		const char *name = phdr->p_flags & PF_X ? "CODE" : "DATA";
+		uchar type = phdr->p_flags & PF_X ? SEG_CODE : SEG_DATA;
 		
 		switch (phdr->p_type) {
 		case PT_LOAD:
-			name = phdr->p_flags & PF_X ? "CODE" : "DATA";
-			type = phdr->p_flags & PF_X ? SEG_CODE : SEG_DATA;
-			
-			msg("%s:\n", ph_type_to_string(phdr->p_type).c_str());
-			msg("  p_flags:  0x%llx\n", phdr->p_flags);
-			msg("  p_offset: 0x%llx\n", phdr->p_offset);
-			msg("  p_vaddr:  0x%llx\n", phdr->p_vaddr);
-			msg("  p_paddr:  0x%llx\n", phdr->p_paddr);
-			msg("  p_filesz: 0x%llx\n", phdr->p_filesz);
-			msg("  p_memsz:  0x%llx\n", phdr->p_memsz);
-			msg("  p_align:  0x%llx\n", phdr->p_align);
-
 			createSegment(name, phdr->p_flags, reader.get_seg_bitness(), type, phdr->p_vaddr, phdr->p_vaddr + phdr->p_memsz);
 			file2base(li, phdr->p_offset, phdr->p_vaddr, phdr->p_vaddr + phdr->p_filesz, FILEREG_PATCHABLE);
 			break;
 		case PT_SCE_RELRO:
-			msg("%s:\n", ph_type_to_string(phdr->p_type).c_str());
-			msg("  p_flags:  0x%llx\n", phdr->p_flags);
-			msg("  p_offset: 0x%llx\n", phdr->p_offset);
-			msg("  p_vaddr:  0x%llx\n", phdr->p_vaddr);
-			msg("  p_paddr:  0x%llx\n", phdr->p_paddr);
-			msg("  p_filesz: 0x%llx\n", phdr->p_filesz);
-			msg("  p_memsz:  0x%llx\n", phdr->p_memsz);
-			msg("  p_align:  0x%llx\n", phdr->p_align);
-
 			createSegment(".relro", phdr->p_flags, reader.get_seg_bitness(), SEG_XTRN, phdr->p_vaddr, phdr->p_vaddr + phdr->p_memsz);
 			file2base(li, phdr->p_offset, phdr->p_vaddr, phdr->p_vaddr + phdr->p_filesz, FILEREG_PATCHABLE);
 			break;
 		case PT_GNU_EH_FRAME:
-			msg("%s:\n", ph_type_to_string(phdr->p_type).c_str());
-			msg("  p_flags:  0x%llx\n", phdr->p_flags);
-			msg("  p_offset: 0x%llx\n", phdr->p_offset);
-			msg("  p_vaddr:  0x%llx\n", phdr->p_vaddr);
-			msg("  p_paddr:  0x%llx\n", phdr->p_paddr);
-			msg("  p_filesz: 0x%llx\n", phdr->p_filesz);
-			msg("  p_memsz:  0x%llx\n", phdr->p_memsz);
-			msg("  p_align:  0x%llx\n", phdr->p_align);
-
 			createSegment(".eh_frame", phdr->p_flags, reader.get_seg_bitness(), SEG_DATA, phdr->p_vaddr, phdr->p_vaddr + phdr->p_memsz);
 			file2base(li, phdr->p_offset, phdr->p_vaddr, phdr->p_vaddr + phdr->p_filesz, FILEREG_PATCHABLE);
 			break;
 		case PT_SCE_DYNLIBDATA:
-			msg("%s:\n", ph_type_to_string(phdr->p_type).c_str());
-			msg("  p_flags:  0x%llx\n", phdr->p_flags);
-			msg("  p_offset: 0x%llx\n", phdr->p_offset);
-			msg("  p_vaddr:  0x%llx\n", phdr->p_vaddr);
-			msg("  p_paddr:  0x%llx\n", phdr->p_paddr);
-			msg("  p_filesz: 0x%llx\n", phdr->p_filesz);
-			msg("  p_memsz:  0x%llx\n", phdr->p_memsz);
-			msg("  p_align:  0x%llx\n", phdr->p_align);
-			
 			dyndata = *phdr;
-			break;
-		default:
-			msg("%s:\n", ph_type_to_string(phdr->p_type).c_str());
-			msg("  p_flags:  0x%llx\n", phdr->p_flags);
-			msg("  p_offset: 0x%llx\n", phdr->p_offset);
-			msg("  p_vaddr:  0x%llx\n", phdr->p_vaddr);
-			msg("  p_paddr:  0x%llx\n", phdr->p_paddr);
-			msg("  p_filesz: 0x%llx\n", phdr->p_filesz);
-			msg("  p_memsz:  0x%llx\n", phdr->p_memsz);
-			msg("  p_align:  0x%llx\n", phdr->p_align);
+			break;		
 		}
+
+		msg("%d %s:\n", i, ph_type_to_string(phdr->p_type).c_str());
+		msg("  p_flags:  0x%llx\n", phdr->p_flags);
+		msg("  p_offset: 0x%llx\n", phdr->p_offset);
+		msg("  p_vaddr:  0x%llx\n", phdr->p_vaddr);
+		msg("  p_paddr:  0x%llx\n", phdr->p_paddr);
+		msg("  p_filesz: 0x%llx\n", phdr->p_filesz);
+		msg("  p_memsz:  0x%llx\n", phdr->p_memsz);
+		msg("  p_align:  0x%llx\n", phdr->p_align);
 	}
 
 	inf.start_ip = get_imagebase() + reader.get_header().e_entry;
@@ -448,89 +409,87 @@ void idaapi elf_load_file(linput_t *li, ushort neflags, const char *fileformatna
 
 	for (elf_dyn_t *dyn = dyninfo_tags.begin(); dyn != dyninfo_tags.end(); ++dyn)
 	{
-		uint32 lid;
-		uint32 mid;
-		uint32 lnameidx;
-		uint32 mnameidx;
-		uint32 attriidx;
+		uint64 data = dyn->d_un;
+		uint64 tag = dyn->d_tag;
+		uint32 id = data >> 48;
+		uint32 nameidx = data & 0xFFFFFFFF;
+		uint32 attridx = data & 0xF;
 
-		switch (dyn->d_tag) {
-		case DT_SCE_HASH: msg("DT_SCE_HASH \t 0x%08llx\n", dyn->d_un); break;
-		case DT_SCE_HASHSZ: msg("DT_SCE_HASHSZ \t %d\n", dyn->d_un); break;
-		case DT_SCE_STRTAB: msg("DT_SCE_STRTAB \t 0x%08llx\n", dyn->d_un); break;
-		case DT_SCE_STRSZ: msg("DT_SCE_STRSZ \t %d\n", dyn->d_un); break;
-		case DT_SCE_SYMTAB: msg("DT_SCE_SYMTAB \t 0x%08llx\n", dyn->d_un); break;
-		case DT_SCE_SYMTABSZ: msg("DT_SCE_SYMTABSZ \t %d\n", dyn->d_un); break;
-		case DT_INIT: add_entry(reader.get_load_bias() + dyn->d_un, reader.get_load_bias() + dyn->d_un, ".init_proc", true); break;
-		case DT_FINI: add_entry(reader.get_load_bias() + dyn->d_un, reader.get_load_bias() + dyn->d_un, ".term_proc", true); break;
-		case DT_SCE_PLTGOT: msg("DT_SCE_PLTGOT \t 0x%08llx\n", dyn->d_un); break;
-		case DT_SCE_JMPREL: msg("DT_SCE_JMPREL \t 0x%08llx\n", dyn->d_un); break;
-		case DT_SCE_PLTREL:
-			if (dyn->d_un == 7)
-				msg("DT_SCE_PLTREL \t %d \t       DT_RELA\n", dyn->d_un);
-			else
-				msg("DT_SCE_PLTREL \t %d\n", dyn->d_un);
+		switch (tag) {
+		case DT_SCE_HASH:
+		case DT_SCE_STRTAB:
+		case DT_SCE_SYMTAB:
+		case DT_SCE_PLTGOT:
+		case DT_SCE_JMPREL:
+		case DT_SCE_RELA:
+		case DT_INIT_ARRAY:
+		case DT_FINI_ARRAY:
+		case DT_PREINIT_ARRAY:
+		case DT_SCE_FINGERPRINT:
+			msg("%s \t 0x%08llx\n", dyntag_to_string(tag).c_str(), data);
 			break;
-		case DT_SCE_PLTRELSZ: msg("DT_SCE_PLTRELSZ \t %d\n", dyn->d_un); break;
-		case DT_SCE_RELA: msg("DT_SCE_RELA \t 0x%08llx\n", dyn->d_un); break;
-		case DT_SCE_RELASZ: msg("DT_SCE_RELASZ \t %d\n", dyn->d_un); break;
-		case DT_SCE_RELAENT: msg("DT_SCE_RELAENT \t %d\n", dyn->d_un); break;
-		case DT_SCE_SYMENT: msg("DT_SCE_SYMENT \t %d\n", dyn->d_un); break;
-		case DT_DEBUG: msg("DT_DEBUG \t\t 0x%08llx\n", dyn->d_un); break;
-		case DT_FLAGS: msg("DT_FLAGS \t\t 0x%08llx\n", dyn->d_un); break;
-		case DT_NEEDED: msg("DT_NEEDED \t\t 0x%08llx       %s\n", dyn->d_un, &strtab[dyn->d_un]); break;
-		case DT_SCE_NEEDED_MODULE:
-			mid = dyn->d_un >> 48;
-			mnameidx = dyn->d_un & 0xFFFFFFFF;
-			msg("DT_SCE_NEEDED_MODULE \t 0x%013llx  MID:%x  Name:%s\n", dyn->d_un, mid, &strtab[mnameidx]);
-			dynlib.addModule(mid, mnameidx);
+		case DT_SCE_HASHSZ:
+		case DT_SCE_STRSZ:
+		case DT_SCE_SYMTABSZ:
+		case DT_SCE_PLTRELSZ:
+		case DT_SCE_RELASZ:
+		case DT_SCE_RELAENT:
+		case DT_INIT_ARRAYSZ:
+		case DT_FINI_ARRAYSZ:
+		case DT_PREINIT_ARRAYSZ:
+		case DT_SCE_SYMENT:
+			msg("%s \t %d\n", dyntag_to_string(tag).c_str(), data);
+			break;
+		case DT_INIT:
+			msg("DT_INIT \t\t 0x%08llx\n", data);
+			add_entry(reader.get_load_bias() + data,
+				reader.get_load_bias() + data,
+				".init_proc", true);
+			break;
+		case DT_FINI:
+			msg("DT_FINI \t\t 0x%08llx\n", data);
+			add_entry(reader.get_load_bias() + data,
+				reader.get_load_bias() + data,
+				".term_proc", true);
+			break;
+		case DT_SCE_PLTREL: 
+			msg("DT_SCE_PLTREL \t %d \t       %s\n", 
+				data, dyntag_to_string(data).c_str());
+			break;
+		case DT_DEBUG:
+		case DT_FLAGS:
+			msg("%s \t\t 0x%08llx\n", dyntag_to_string(tag).c_str(), data);
 			break;
 		case DT_SONAME:
-			msg("DT_SONAME \t\t 0x%08llx       %s\n", dyn->d_un, &strtab[dyn->d_un & 0xFFFFFFFF]);
+		case DT_NEEDED:
+			msg("%s \t\t 0x%08llx       %s\n",
+				dyntag_to_string(tag).c_str(), data, &strtab[nameidx]);
+			break;
+		case DT_SCE_NEEDED_MODULE:
+		case DT_SCE_MODULE_INFO:
+			msg("%s \t 0x%013llx  MID:%x  Name:%s\n",
+				dyntag_to_string(tag).c_str(), data, id, &strtab[nameidx]);
+			dynlib.addModule(id, nameidx);
 			break;
 		case DT_SCE_IMPORT_LIB:
-			lid = dyn->d_un >> 48;
-			lnameidx = dyn->d_un & 0xFFFFFFFF;
-			msg("DT_SCE_IMPORT_LIB \t 0x%013llx  LID:%x  Name:%s\n", dyn->d_un, lid, &strtab[lnameidx]);
-			break;
 		case DT_SCE_EXPORT_LIB:
-			lid = dyn->d_un >> 48;
-			lnameidx = dyn->d_un & 0xFFFFFFFF;
-			msg("DT_SCE_EXPORT_LIB \t 0x%013llx  LID:%x  Name:%s\n", dyn->d_un, lid, &strtab[lnameidx]);
+			msg("%s \t 0x%013llx  LID:%x  Name:%s\n",
+				dyntag_to_string(tag).c_str(), data, id, &strtab[nameidx]);
 			break;
 		case DT_SCE_IMPORT_LIB_ATTR:
-			lid = dyn->d_un >> 48;
-			attriidx = dyn->d_un & 0xF;
-			if (attriidx == 0x1)
-				msg("DT_SCE_IMPORT_LIB_ATTR  0x%013llx  LID:%x  Attribute:AUTO_EXPORT\n", dyn->d_un, lid);
-			else if (attriidx == 0x9)
-				msg("DT_SCE_IMPORT_LIB_ATTR  0x%013llx  LID:%x  Attribute:AUTO_EXPORT|LOOSE_IMPORT\n", dyn->d_un, lid);
-			break;
 		case DT_SCE_EXPORT_LIB_ATTR:
-			lid = dyn->d_un >> 48;
-			attriidx = dyn->d_un & 0xF;
-			if (attriidx == 0x1)
-				msg("DT_SCE_EXPORT_LIB_ATTR  0x%013llx  LID:%x  Attribute:AUTO_EXPORT\n", dyn->d_un, lid);
-			else if (attriidx == 0x9)
-				msg("DT_SCE_EXPORT_LIB_ATTR  0x%013llx  LID:%x  Attribute:AUTO_EXPORT|LOOSE_IMPORT\n", dyn->d_un, lid);
-			break;
+			msg("%s  0x%013llx  LID:%x  Attribute:%s\n",
+				dyntag_to_string(tag).c_str(), data, id, attributes_to_string(attridx).c_str());
+			break;		
 		case DT_SCE_ORIGINAL_FILENAME:
-			msg("DT_SCE_ORIGINAL_FILENAME 0x%08llx     %s\n", dyn->d_un, &strtab[dyn->d_un & 0xFFFFFFFF]);
-			break;
-		case DT_SCE_FINGERPRINT:
-			msg("DT_SCE_FINGERPRINT \t 0x%08llx       \n", dyn->d_un);
-			break;
-		case DT_SCE_MODULE_INFO:
-			mid = dyn->d_un >> 48;
-			mnameidx = dyn->d_un & 0xFFFFFFFF;
-			msg("DT_SCE_MODULE_INFO \t 0x%013llx  MID:%x  Name:%s\n", dyn->d_un, mid, &strtab[mnameidx]);
-			dynlib.setSelfModuleStrIndex(mnameidx);
+			msg("%s 0x%08llx      %s\n", 
+				dyntag_to_string(tag).c_str(), data, &strtab[nameidx]);
 			break;
 		case DT_SCE_MODULE_ATTR:
-			msg("DT_SCE_MODULE_ATTR \t 0x%08llx       None\n", dyn->d_un);
+			msg("%s \t 0x%08llx       %s\n",
+				dyntag_to_string(tag).c_str(), data, attributes_to_string(attridx).c_str());
 			break;
-		case DT_NULL:
-			msg("DT_NULL \t\t -\n");
+		case DT_NULL: msg("DT_NULL \t\t -\n");
 			break;
 		}
 	}

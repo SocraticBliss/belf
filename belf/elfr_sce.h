@@ -63,7 +63,8 @@ enum elf_SEGTYPE_SCE
 enum elf_ATTRIB_SCE
 {
 	AT_SCE_AUTO_EXPORT  = 0x1,
-	AT_SCE_LOOSE_IMPORT = 0x8
+	AT_SCE_LOOSE_IMPORT = 0x8,
+	AT_SCE_AELI = 0x9
 };
 
 /* Relocation types for AMD x86-64 architecture */
