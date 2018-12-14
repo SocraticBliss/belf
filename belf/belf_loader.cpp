@@ -371,7 +371,7 @@ void idaapi elf_load_file(linput_t *li, ushort neflags, const char *fileformatna
 		}
 
 		msg("%d %s:\n", i, ph_type_to_string(phdr->p_type).c_str());
-		msg("  p_flags:  0x%llx\n", phdr->p_flags);
+		msg("  p_flags:  0x%llx \t %s\n", phdr->p_flags, flags_to_string(phdr->p_flags).c_str());
 		msg("  p_offset: 0x%llx\n", phdr->p_offset);
 		msg("  p_vaddr:  0x%llx\n", phdr->p_vaddr);
 		msg("  p_paddr:  0x%llx\n", phdr->p_paddr);

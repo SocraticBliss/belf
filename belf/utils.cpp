@@ -207,6 +207,25 @@ qstring attributes_to_string(uint32 attributes)
 	return ret;
 }
 
+qstring flags_to_string(uint32 flags)
+{
+	switch (flags) {
+	case PF_X: return "Execute";
+	case PF_W: return "Write";
+	case PF_R: return "Read";
+	case PF_WX: return "Write, Execute";
+	case PF_RX: return "Read, Execute";
+	case PF_RW: return "Read, Write";
+	case PF_RWX: return "Read, Write, Execute";
+	case PF_SCE_CODE: return "Read, Execute";
+	case PF_SCE_DATA: return "Read, Write";
+	}
+
+	qstring ret;
+	ret.sprnt("None", flags);
+	return ret;
+}
+
 int decode_base64(const char *str, int *a2)
 {
 	char chr; // dl@1

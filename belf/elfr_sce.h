@@ -67,6 +67,16 @@ enum elf_ATTRIB_SCE
 	AT_SCE_AELI = 0x9
 };
 
+enum elf_SEGFLAGS_SCE
+{
+	PF_WX = 0x3,
+	PF_RX = 0x5,
+	PF_RW = 0x6,
+	PF_RWX = 0x7,
+	PF_SCE_CODE = 0x8600005,
+	PF_SCE_DATA = 0x8300006
+};
+
 /* Relocation types for AMD x86-64 architecture */
 #define R_X86_64_NONE                0   /* No reloc */
 #define R_X86_64_64                  1   /* Direct 64-bit  */
