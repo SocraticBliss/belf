@@ -60,6 +60,12 @@ enum elf_SEGTYPE_SCE
     PT_SCE_LIBVERSION  = 0x6fffff01
 };
 
+enum elf_ATTRIB_SCE
+{
+	AT_SCE_AUTO_EXPORT  = 0x1,
+	AT_SCE_LOOSE_IMPORT = 0x8
+};
+
 /* Relocation types for AMD x86-64 architecture */
 #define R_X86_64_NONE                0   /* No reloc */
 #define R_X86_64_64                  1   /* Direct 64-bit  */

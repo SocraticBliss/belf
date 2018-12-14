@@ -1,6 +1,6 @@
 
-#ifndef ELF_READER_CPP
-#define ELF_READER_CPP
+#ifndef READER_CPP
+#define READER_CPP
 
 #include <algorithm>
 #include <functional>
@@ -3168,4 +3168,4 @@ arm_arch_specific_t::isa_t arm_arch_specific_t::get_isa(const sym_rel &symbol) c
 	return current_isa;
 }
 
-#endif // ELF_READER_CPP
+#endif // READER_CPP
