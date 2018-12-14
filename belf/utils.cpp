@@ -1,13 +1,17 @@
-#include <ida.hpp>
-#include <elfbase.h>
-#include "elfr_sce.h"
 
+#ifndef UTILS_CPP
+#define UTILS_CPP
+
+#include <ida.hpp>
+
+#include <elfbase.h>
+
+#include "elfr_sce.h"
 #include "utils.h"
 
-qstring ph_type_to_string(uint32 p_type)
+qstring ph_type_to_string(uint32 type)
 {
-	switch (p_type)
-	{
+	switch (type) {
 	case PT_NULL: return "PT_NULL";
 	case PT_LOAD: return "PT_LOAD";
 	case PT_DYNAMIC: return "PT_DYNAMIC";
@@ -42,14 +46,13 @@ qstring ph_type_to_string(uint32 p_type)
 	}
 
 	qstring ret;
-	ret.sprnt("UNK_%x", p_type);
+	ret.sprnt("UNK_%x", type);
 	return ret;
 }
 
 qstring dyntag_to_string(uint64 tag)
 {
-	switch (tag)
-	{
+	switch (tag) {
 	case DT_NULL: return "DT_NULL";
 	case DT_NEEDED: return "DT_NEEDED";
 	case DT_PLTRELSZ: return "DT_PLTRELSZ";
@@ -201,37 +204,53 @@ int decode_base64(const char *str, int *a2)
 
 	chr = *str;
 	v3 = 0LL;
-	if (*str) {
+	if (*str)
+	{
 		v4 = str + 1;
 		v3 = 0LL;
+
 		do {
 			v5 = v3 << 6;
-			if ((unsigned __int8)(chr - 0x61) > 0x19u) {
-				if ((unsigned __int8)(chr - 0x41) > 0x19u) {
-					if ((unsigned __int8)(chr - 0x30) > 9u) {
+			if ((unsigned char)(chr - 0x61) > 0x19u)
+			{
+				if ((unsigned char)(chr - 0x41) > 0x19u)
+				{
+					if ((unsigned char)(chr - 0x30) > 9u)
+					{
 						if (chr == '-')
+						{
 							v3 = v5 | 0x3F;
-						else {
+						}
+						else
+						{
 							result = 22LL;
+
 							if (chr != '+')
 								return result;
+							
 							v3 = v5 | 0x3E;
 						}
 					}
-					else {
+					else
+					{
 						v3 = chr + (v5 | 4);
 					}
 				}
-				else {
+				else
+				{
 					v3 = v5 + chr - 0x41;
 				}
 			}
-			else {
+			else
+			{
 				v3 = v5 + chr - 0x47;
 			}
 			chr = *v4++;
 		} while (chr);
 	}
 	*a2 = v3;
+
 	return 0LL;
 }
+
+#endif // UTILS_CPP

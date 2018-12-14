@@ -1,10 +1,14 @@
-#include "dynlib.h"
+
+#ifndef DYNLIB_CPP
+#define DYNLIB_CPP
 
 #include <ida.hpp>
-#include <loader.hpp>
 #include <idp.hpp>
+#include <loader.hpp>
 
 #include "TinyXML/tinyxml.h"
+
+#include "dynlib.h"
 #include "utils.h"
 
 DynLib::DynLib(const char *xml)
@@ -12,33 +16,38 @@ DynLib::DynLib(const char *xml)
 	LoadXML(xml);
 }
 
-DynLib::~DynLib()
-{
-
-}
+DynLib::~DynLib(){}
 
 void DynLib::LoadXML(const char *db)
 {
 	TiXmlDocument xml;
+
 	if (!xml.LoadFile(db))
 		loader_failure("Failed to load database file (%s).", db);
 
 	TiXmlElement *DynlibDatabase = xml.FirstChildElement();
+
 	if (!DynlibDatabase || strcmp(DynlibDatabase->Value(), "DynlibDatabase"))
 		loader_failure("Database requires the \"DynlibDatabase\" header.");
 
 	TiXmlElement *e = DynlibDatabase->FirstChildElement();
+
 	if (!e)
 		loader_failure("Database has no entries in the \"DynlibDatabase\" header.");
 
 	do {
 		const char *obf = e->Attribute("obf");
+		
 		if (!obf)
 			loader_failure("Entry needs to have an \"obf\" attribute.");
+		
 		const char *lib = e->Attribute("lib");
+		
 		if (!lib)
 			loader_failure("Entry needs to have an \"lib\" attribute.");
+		
 		const char *sym = e->Attribute("sym");
+		
 		if (!sym)
 			loader_failure("Entry needs to have an \"sym\" attribute.");
 
@@ -53,9 +62,10 @@ void DynLib::LoadXML(const char *db)
 bool DynLib::isObfuscated(const char *sym)
 {
 	const char *p;
+
 	if (strlen(sym) >= 13)
 		if ((p = strchr(sym, '#')) != NULL) // contains first #
-			if ((p - sym) == 11)                // obfuscated symbol is 11 chars
+			if ((p - sym) == 11) // obfuscated symbol is 11 chars
 				if ((p = strchr(p + 1, '#')) != NULL) // contains second #
 					return true;
 
@@ -65,20 +75,24 @@ bool DynLib::isObfuscated(const char *sym)
 uint32 DynLib::lookup(const char *obf)
 {
 	int modid;
-
 	const char *lib = strchr(obf, '#');
-	if (lib == NULL) {
+
+	if (lib == NULL)
+	{
 		msg("No lib ID in this symbol.\n");
 		return -1;
 	}
 
 	lib = strchr(lib + 1, '#');
-	if (lib == NULL) {
+
+	if (lib == NULL)
+	{
 		msg("No mod ID in this symbol.\n");
 		return -1;
 	}
 
-	if (decode_base64(lib + 1, &modid)) {
+	if (decode_base64(lib + 1, &modid))
+	{
 		msg("Invalid module ID!\n");
 		return -1;
 	}
@@ -87,9 +101,7 @@ uint32 DynLib::lookup(const char *obf)
 		return m_selfModuleStrIndex;
 
 	if (m_module_map.find(modid) != m_module_map.end())
-	{
 		return m_module_map.at(modid);
-	}
 
 	return -1;
 }
@@ -104,3 +116,5 @@ qstring DynLib::deobfuscate(qstring lib, qstring obf)
 
 	return "";
 }
+
+#endif // DYNLIB_CPP
