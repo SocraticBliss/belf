@@ -1,5 +1,4 @@
-#ifndef __ELFR_SCE_H__
-#define __ELFR_SCE_H__
+#pragma once
 
 #include <map>
 #include <set>
@@ -138,5 +137,3 @@ enum elf_SEGFLAGS_SCE
 #define R_X86_64_ORBIS_GOTPCREL_LOAD 40
 #define R_X86_64_GNU_VTINHERIT       250
 #define R_X86_64_GNU_VTENTRY         251
-
-#endif

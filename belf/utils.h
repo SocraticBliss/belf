@@ -1,5 +1,4 @@
-#ifndef __UTILS_H__
-#define __UTILS_H__
+#pragma once
 
 #include <pro.h>
 
@@ -9,6 +8,5 @@ qstring p_type_to_string(uint32 p_type);
 
 qstring port_attributes_to_string(uint32 attributes);
 qstring module_attributes_to_string(uint32 attributes);
-int decode_base64(const char *str, int *a2);
 
-#endif
+int decode_base64(const char *str, int *a2);

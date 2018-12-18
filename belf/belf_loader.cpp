@@ -1,7 +1,3 @@
-
-#ifndef BELF_LOADER_CPP
-#define BELF_LOADER_CPP
-
 #include <vector>
 
 #include <auto.hpp>
@@ -180,13 +176,6 @@ void load_jmprel(reader_t &reader, elf_phdr_t &dyndata, dynamic_info_t::entry_t 
 	if (reader.safe_read(jmprel, jmprel_entry.size, false) != 0)
 		loader_failure("Failed reading jmprel segment!");
 
-/*
-qstring obf_name = name.c_str();
-set_cmt(jmprel[i].r_offset, , true);
-*/
-
-	//msg("dyninfo.symtab().size: 0x%llx\n", jmprel_entry.size);
-	//msg("sizeof(elf_rela_t):    0x%llx\n", sizeof(elf_rela_t));
 	for (int i = 0; i < (jmprel_entry.size / sizeof(Elf64_Rela)); i++)
 	{
 		int type = reader.rel_info_type(jmprel[i]);
@@ -194,20 +183,22 @@ set_cmt(jmprel[i].r_offset, , true);
 	
 		if (type != R_X86_64_JUMP_SLOT)
 		{
-			msg("Unexpected reloc type %i for jump slot %i\n", type, i);
+			msg("Unexpected relocation type %i for jump slot %i\n", type, i);
 			continue;
 		}
-		/*
+
+		/* I really dunno why commenting these out causes things to work correctly, if someone does, let me know!
+
 		if (idx >= (jmprel_entry.size / sizeof(elf_sym_t)))
 		{
-			//msg("Invalid symbol index %i for relocation %i at offset 0x%x\n", idx, i, jmprel[i].r_offset);
+			msg("Invalid symbol index %i for relocation %i at offset 0x%x\n", idx, i, jmprel[i].r_offset);
 			//msg("*** %012llx %012llx Symbol index %i for relocation %i\n", jmprel[i].r_offset, jmprel[i].r_info, idx, i);
 			continue;
 		}
 		else
 		{
+			msg("Symbol index %i for relocation %i at offset 0x%x\n", idx, i, jmprel[i].r_offset);
 			//msg("%012llx %012llx Symbol index %i for relocation %i\n", jmprel[i].r_offset, jmprel[i].r_info, idx, i);
-			//msg("Symbol index %i for relocation %i at offset 0x%x\n", idx, i, jmprel[i].r_offset);
 		}
 
 		if (symtab[idx].st_name >= jmprel_entry.size)
@@ -216,28 +207,35 @@ set_cmt(jmprel[i].r_offset, , true);
 			continue;
 		}
 		*/
-		qstring name = &strtab[symtab[idx].st_name];
-		const char* module_name = "";
 
-		if (dynlib.isObfuscated(name.c_str()))
+		qstring func_name = &strtab[symtab[idx].st_name];
+		qstring module_name;
+
+		if (dynlib.is_obfuscated(func_name.c_str()))
 		{
-			uint32 modidx = dynlib.lookup(name.c_str());
-			if (modidx != -1)
-				module_name = &strtab[modidx];
+			uint32 module_idx = dynlib.lookup(func_name.c_str());
 
-			qstring deobf_name = dynlib.deobfuscate(module_name, name);
+			if (module_idx != -1)
+				module_name = &strtab[module_idx];
+
+			qstring obf_name;
+			obf_name.sprnt("%s:%s", func_name.c_str(), module_name.c_str()); // substr(0, 11) if you want to remove #A#C etc.
+			set_cmt(jmprel[i].r_offset, obf_name.c_str(), true);
+
+			qstring deobf_name = dynlib.deobfuscate(func_name);
+
 			if (deobf_name != "")
-				name = deobf_name;
+				func_name = deobf_name;
 		}
 
 		qstring import_name;
-		import_name.sprnt(FUNC_IMPORT_PREFIX "%s", name.c_str());
+		import_name.sprnt(FUNC_IMPORT_PREFIX "%s", func_name.c_str());
 		force_name(jmprel[i].r_offset, import_name.c_str());
 
 		netnode import_node;
-		netnode_check(&import_node, module_name, 0, true); //"$ IDALDR node for ids loading $"
-		netnode_supset(import_node, jmprel[i].r_offset, name.c_str(), 0, 339);
-		import_module(module_name, 0, import_node, 0, "linux");
+		netnode_check(&import_node, module_name.c_str(), 0, true); // "$ IDALDR node for ids loading $"
+		netnode_supset(import_node, jmprel[i].r_offset, func_name.c_str(), 0, 339);
+		import_module(module_name.c_str(), 0, import_node, 0, "linux");
 	}
 	delete[] jmprel;
 }
@@ -249,29 +247,33 @@ void load_symtab(dynamic_info_t::entry_t &symtab_entry, elf_sym_t *&symtab, char
 		if (symtab[i].st_value == 0)
 			continue;
 
-		qstring name = &strtab[symtab[i].st_name];
-		const char* module_name = "";
+		qstring func_name = &strtab[symtab[i].st_name];
+		qstring module_name;
 
-		if (dynlib.isObfuscated(name.c_str()))
+		if (dynlib.is_obfuscated(func_name.c_str()))
 		{
-			uint32 modidx = dynlib.lookup(name.c_str());
+			uint32 module_idx = dynlib.lookup(func_name.c_str());
 			
-			if (modidx != -1)
-				module_name = &strtab[modidx];
+			if (module_idx != -1)
+				module_name = &strtab[module_idx];
 
-			qstring deobf_name = dynlib.deobfuscate(module_name, name);
+			qstring obf_name;
+			obf_name.sprnt("%s", func_name.c_str()); // substr(0, 11) if you want to remove #A#C etc.
+			set_cmt(symtab[i].st_value, obf_name.c_str(), true);
+
+			qstring deobf_name = dynlib.deobfuscate(func_name);
 			
 			if (deobf_name != "")
-				name = deobf_name;
+				func_name = deobf_name;
 		}
 
 		if (ELF_ST_TYPE(symtab[i].st_info) == STT_FUNC || ELF_ST_TYPE(symtab[i].st_info) == STT_GNU_IFUNC)
 		{
-			add_entry(symtab[i].st_value, symtab[i].st_value, name.c_str(), true);
+			add_entry(symtab[i].st_value, symtab[i].st_value, func_name.c_str(), true);
 		}
 		else
 		{
-			force_name(symtab[i].st_value, name.c_str());
+			force_name(symtab[i].st_value, func_name.c_str());
 		}
 	}
 }
@@ -483,7 +485,7 @@ void idaapi elf_load_file(linput_t *li, ushort neflags, const char *fileformatna
 		case DT_SCE_MODULE_INFO:
 			msg("%s \t 0x%013llx  MID:%x  Name:%s\n",
 				d_tag_to_string(tag).c_str(), data, id, &strtab[nameidx]);
-			dynlib.addModule(id, nameidx);
+			dynlib.add_module(id, nameidx);
 			break;
 		case DT_SCE_IMPORT_LIB:
 		case DT_SCE_EXPORT_LIB:
@@ -541,5 +543,3 @@ extern "C" __declspec(dllexport) loader_t LDSC =
 	nullptr,
 	nullptr
 };
-
-#endif // BELF_LOADER_CPP

@@ -1,5 +1,4 @@
-#ifndef __DYNLIB_H__
-#define __DYNLIB_H__
+#pragma once
 
 #include <pro.h>
 #include <unordered_map>
@@ -8,14 +7,13 @@ class DynLib
 {
 public:
 	DynLib(const char *xml);
-	~DynLib();
-	void LoadXML(const char *);
-	void setSelfModuleStrIndex(uint32 idx) { m_selfModuleStrIndex = idx; }
-	void addModule(uint32 id, uint32 nameidx) { m_module_map[id] = nameidx; }
+	
+	void load_xml(const char *);
+	void add_module(uint32 id, uint32 name_idx) { module_map[id] = name_idx; }
 
-	bool isObfuscated(const char *sym);
-	uint32 lookup(const char *obf);
-	qstring deobfuscate(qstring lib, qstring obf);
+	bool is_obfuscated(const char *sym);
+	unsigned int lookup(const char *obf);
+	qstring deobfuscate(qstring obf);
 
 private:
 	struct dynlib_entry
@@ -24,10 +22,7 @@ private:
 		qstring lib;
 		qstring sym;
 	};
-	std::vector<dynlib_entry> m_entries;
+	std::vector<dynlib_entry> entries;
 
-	uint32 m_selfModuleStrIndex = 0;
-	std::unordered_map<uint32, uint32> m_module_map;
+	std::unordered_map<uint32, uint32> module_map;
 };
-
-#endif

@@ -1,7 +1,3 @@
-
-#ifndef UTILS_CPP
-#define UTILS_CPP
-
 #include <ida.hpp>
 
 #include <elfbase.h>
@@ -213,7 +209,6 @@ qstring p_type_to_string(uint32 p_type)
 	return ret;
 }
 
-
 qstring port_attributes_to_string(uint32 attributes)
 {
 	switch (attributes) {
@@ -303,5 +298,3 @@ int decode_base64(const char *str, int *a2)
 
 	return 0LL;
 }
-
-#endif // UTILS_CPP

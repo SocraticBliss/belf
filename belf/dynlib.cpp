@@ -1,7 +1,3 @@
-
-#ifndef DYNLIB_CPP
-#define DYNLIB_CPP
-
 #include <ida.hpp>
 #include <idp.hpp>
 #include <loader.hpp>
@@ -13,12 +9,10 @@
 
 DynLib::DynLib(const char *xml)
 {
-	LoadXML(xml);
+	load_xml(xml);
 }
 
-DynLib::~DynLib(){}
-
-void DynLib::LoadXML(const char *db)
+void DynLib::load_xml(const char *db)
 {
 	TiXmlDocument xml;
 
@@ -55,11 +49,11 @@ void DynLib::LoadXML(const char *db)
 		entry.obf.sprnt(obf);
 		entry.lib.sprnt(lib);
 		entry.sym.sprnt(sym);
-		m_entries.push_back(entry);
+		entries.push_back(entry);
 	} while (e = e->NextSiblingElement());
 }
 
-bool DynLib::isObfuscated(const char *sym)
+bool DynLib::is_obfuscated(const char *sym)
 {
 	const char *p;
 
@@ -72,43 +66,42 @@ bool DynLib::isObfuscated(const char *sym)
 	return false;
 }
 
-uint32 DynLib::lookup(const char *obf)
+unsigned int DynLib::lookup(const char *obf)
 {
-	int modid;
-	const char *lib = strchr(obf, '#');
+	int module_id;
+	const char *library_id;
+	
+	library_id = strchr(obf, '#');
 
-	if (lib == NULL)
+	if (library_id == NULL)
 	{
-		msg("No lib ID in this symbol.\n");
+		msg("No Library ID in this symbol!\n");
 		return -1;
 	}
 
-	lib = strchr(lib + 1, '#');
+	library_id = strchr(library_id + 1, '#');
 
-	if (lib == NULL)
+	if (library_id == NULL)
 	{
-		msg("No mod ID in this symbol.\n");
+		msg("No Module ID in this symbol!\n");
 		return -1;
 	}
 
-	if (decode_base64(lib + 1, &modid))
+	if (decode_base64(library_id + 1, &module_id))
 	{
-		msg("Invalid module ID!\n");
+		msg("Invalid Module ID!\n");
 		return -1;
 	}
 
-	if (modid == 0)
-		return m_selfModuleStrIndex;
-
-	if (m_module_map.find(modid) != m_module_map.end())
-		return m_module_map.at(modid);
+	if (module_map.find(module_id) != module_map.end())
+		return module_map.at(module_id);
 
 	return -1;
 }
 
-qstring DynLib::deobfuscate(qstring lib, qstring obf)
+qstring DynLib::deobfuscate(qstring obf)
 {
-	for (const dynlib_entry& entry : m_entries)
+	for (const dynlib_entry& entry : entries)
 	{
 		if (obf.substr(0, 11) == entry.obf)
 			return entry.sym;
@@ -116,5 +109,3 @@ qstring DynLib::deobfuscate(qstring lib, qstring obf)
 
 	return "";
 }
-
-#endif // DYNLIB_CPP
