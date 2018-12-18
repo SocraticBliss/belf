@@ -174,30 +174,40 @@ void createSegment(const char *name, uint32 flags, uchar bitness, uchar type, ea
 void load_jmprel(reader_t &reader, elf_phdr_t &dyndata, dynamic_info_t::entry_t &jmprel_entry, elf_sym_t *&symtab, char *&strtab, DynLib &dynlib)
 {
 	elf_rela_t *jmprel = new elf_rela_t[jmprel_entry.size / sizeof(elf_rela_t)];
-	
+
 	reader.seek(dyndata.p_offset + jmprel_entry.addr);
 	
 	if (reader.safe_read(jmprel, jmprel_entry.size, false) != 0)
-		loader_failure("Failed reading jmprel!");
+		loader_failure("Failed reading jmprel segment!");
 
-	msg("dyninfo.symtab().size: 0x%llx\n", jmprel_entry.size);
-	msg("sizeof(elf_rela_t):    0x%llx\n", sizeof(elf_rela_t));
+/*
+qstring obf_name = name.c_str();
+set_cmt(jmprel[i].r_offset, , true);
+*/
 
-	for (size_t i = 0; i < (jmprel_entry.size / sizeof(elf_rela_t)); i++)
+	//msg("dyninfo.symtab().size: 0x%llx\n", jmprel_entry.size);
+	//msg("sizeof(elf_rela_t):    0x%llx\n", sizeof(elf_rela_t));
+	for (int i = 0; i < (jmprel_entry.size / sizeof(Elf64_Rela)); i++)
 	{
 		int type = reader.rel_info_type(jmprel[i]);
 		int idx = reader.rel_info_index(jmprel[i]);
-
+	
 		if (type != R_X86_64_JUMP_SLOT)
 		{
 			msg("Unexpected reloc type %i for jump slot %i\n", type, i);
 			continue;
 		}
-
+		/*
 		if (idx >= (jmprel_entry.size / sizeof(elf_sym_t)))
 		{
-			msg("Invalid symbol index %i for relocation %i\n", idx, i);
+			//msg("Invalid symbol index %i for relocation %i at offset 0x%x\n", idx, i, jmprel[i].r_offset);
+			//msg("*** %012llx %012llx Symbol index %i for relocation %i\n", jmprel[i].r_offset, jmprel[i].r_info, idx, i);
 			continue;
+		}
+		else
+		{
+			//msg("%012llx %012llx Symbol index %i for relocation %i\n", jmprel[i].r_offset, jmprel[i].r_info, idx, i);
+			//msg("Symbol index %i for relocation %i at offset 0x%x\n", idx, i, jmprel[i].r_offset);
 		}
 
 		if (symtab[idx].st_name >= jmprel_entry.size)
@@ -205,7 +215,7 @@ void load_jmprel(reader_t &reader, elf_phdr_t &dyndata, dynamic_info_t::entry_t 
 			msg("Invalid symbol string offset %x of symbol %i for relocation %i\n", symtab[idx].st_name, idx, i);
 			continue;
 		}
-
+		*/
 		qstring name = &strtab[symtab[idx].st_name];
 		const char* module_name = "";
 
@@ -234,7 +244,7 @@ void load_jmprel(reader_t &reader, elf_phdr_t &dyndata, dynamic_info_t::entry_t 
 
 void load_symtab(dynamic_info_t::entry_t &symtab_entry, elf_sym_t *&symtab, char *&strtab, DynLib &dynlib)
 {
-	for (int i = 0; i < symtab_entry.size / sizeof(elf_sym_t); i++)
+	for (int i = 0; i < (symtab_entry.size / sizeof(elf_sym_t)); i++)
 	{
 		if (symtab[i].st_value == 0)
 			continue;
@@ -269,17 +279,18 @@ void load_symtab(dynamic_info_t::entry_t &symtab_entry, elf_sym_t *&symtab, char
 void load_rela(reader_t &reader, elf_phdr_t &dyndata, dynamic_info_t::entry_t &rela_entry)
 {
 	elf_rela_t *rela = new elf_rela_t[rela_entry.size / sizeof(elf_rela_t)];
+	
 	reader.seek(dyndata.p_offset + rela_entry.addr);
 	
 	if (reader.safe_read(rela, rela_entry.size, false) != 0)
-		loader_failure("Failed reading rela!");
+		loader_failure("Failed reading rela segment!");
 
 	for (int i = 0; i < (rela_entry.size / sizeof(elf_sym_t)); i++)
 	{
 		int type = reader.rel_info_type(rela[i]);
 		int idx = reader.rel_info_index(rela[i]);
 
-		if (type != R_X86_64_RELATIVE) {
+		if (type < R_X86_64_NONE || type > R_X86_64_RELATIVE64) {
 			msg("Unexpected reloc type %i for rela %i at offset 0x%x\n", type, i, rela[i].r_offset);
 			continue;
 		}
@@ -370,8 +381,8 @@ void idaapi elf_load_file(linput_t *li, ushort neflags, const char *fileformatna
 			break;		
 		}
 
-		msg("%d %s:\n", i, ph_type_to_string(phdr->p_type).c_str());
-		msg("  p_flags:  0x%llx \t %s\n", phdr->p_flags, flags_to_string(phdr->p_flags).c_str());
+		msg("%d %s:\n", i, p_type_to_string(phdr->p_type).c_str());
+		msg("  p_flags:  0x%llx \t %s\n", phdr->p_flags, p_flags_to_string(phdr->p_flags).c_str());
 		msg("  p_offset: 0x%llx\n", phdr->p_offset);
 		msg("  p_vaddr:  0x%llx\n", phdr->p_vaddr);
 		msg("  p_paddr:  0x%llx\n", phdr->p_paddr);
@@ -384,29 +395,32 @@ void idaapi elf_load_file(linput_t *li, ushort neflags, const char *fileformatna
 	inf.start_cs = getseg(inf.start_ip)->sel;
 	msg("\nEntry Address: 0x%llx \n", reader.get_header().e_entry);
 
-	msg("\n[BELF] Reading Dynamic Tags...\n");
 	reader_t::dyninfo_tags_t dyninfo_tags;
 	dynamic_info_t dyninfo;
 	
+	msg("\n[BELF] Reading dyninfo segment...\n");
 	if (!reader.read_dynamic_info_tags(&dyninfo_tags, reader.pheaders.get_dynamic_linking_tables_info()) ||
 		!reader.parse_dynamic_info(&dyninfo, dyninfo_tags))
 		loader_failure("Failed reading dyninfo!");
 
-	if (dyninfo.strtab().addr + dyninfo.strtab().size > dyndata.p_filesz)
+	if ((dyninfo.strtab().addr + dyninfo.strtab().size) > dyndata.p_filesz)
 		loader_failure("strtab is out of dyndata!");
 
 	char *strtab = new char[dyninfo.strtab().size];
+	
 	reader.seek(dyndata.p_offset + dyninfo.strtab().addr);
 	
 	if (reader.safe_read(strtab, dyninfo.strtab().size, false) != 0)
 		loader_failure("Failed reading strtab!");
 
 	elf_sym_t *symtab = new elf_sym_t[dyninfo.symtab().size / sizeof(elf_sym_t)];
+	
 	reader.seek(dyndata.p_offset + dyninfo.symtab().addr);
 	
 	if (reader.safe_read(symtab, dyninfo.symtab().size, false) != 0)
 		loader_failure("Failed reading symtab!");
 
+	msg("\n[BELF] Reading Dynamic Tags...\n");
 	for (elf_dyn_t *dyn = dyninfo_tags.begin(); dyn != dyninfo_tags.end(); ++dyn)
 	{
 		uint64 data = dyn->d_un;
@@ -426,7 +440,7 @@ void idaapi elf_load_file(linput_t *li, ushort neflags, const char *fileformatna
 		case DT_FINI_ARRAY:
 		case DT_PREINIT_ARRAY:
 		case DT_SCE_FINGERPRINT:
-			msg("%s \t 0x%08llx\n", dyntag_to_string(tag).c_str(), data);
+			msg("%s \t 0x%08llx\n", d_tag_to_string(tag).c_str(), data);
 			break;
 		case DT_SCE_HASHSZ:
 		case DT_SCE_STRSZ:
@@ -438,7 +452,7 @@ void idaapi elf_load_file(linput_t *li, ushort neflags, const char *fileformatna
 		case DT_FINI_ARRAYSZ:
 		case DT_PREINIT_ARRAYSZ:
 		case DT_SCE_SYMENT:
-			msg("%s \t %d\n", dyntag_to_string(tag).c_str(), data);
+			msg("%s \t %d\n", d_tag_to_string(tag).c_str(), data);
 			break;
 		case DT_INIT:
 			msg("DT_INIT \t\t 0x%08llx\n", data);
@@ -454,53 +468,53 @@ void idaapi elf_load_file(linput_t *li, ushort neflags, const char *fileformatna
 			break;
 		case DT_SCE_PLTREL: 
 			msg("DT_SCE_PLTREL \t %d \t       %s\n", 
-				data, dyntag_to_string(data).c_str());
+				data, d_tag_to_string(data).c_str());
 			break;
 		case DT_DEBUG:
 		case DT_FLAGS:
-			msg("%s \t\t 0x%08llx\n", dyntag_to_string(tag).c_str(), data);
+			msg("%s \t\t 0x%08llx\n", d_tag_to_string(tag).c_str(), data);
 			break;
 		case DT_SONAME:
 		case DT_NEEDED:
 			msg("%s \t\t 0x%08llx       %s\n",
-				dyntag_to_string(tag).c_str(), data, &strtab[nameidx]);
+				d_tag_to_string(tag).c_str(), data, &strtab[nameidx]);
 			break;
 		case DT_SCE_NEEDED_MODULE:
 		case DT_SCE_MODULE_INFO:
 			msg("%s \t 0x%013llx  MID:%x  Name:%s\n",
-				dyntag_to_string(tag).c_str(), data, id, &strtab[nameidx]);
+				d_tag_to_string(tag).c_str(), data, id, &strtab[nameidx]);
 			dynlib.addModule(id, nameidx);
 			break;
 		case DT_SCE_IMPORT_LIB:
 		case DT_SCE_EXPORT_LIB:
 			msg("%s \t 0x%013llx  LID:%x  Name:%s\n",
-				dyntag_to_string(tag).c_str(), data, id, &strtab[nameidx]);
+				d_tag_to_string(tag).c_str(), data, id, &strtab[nameidx]);
 			break;
 		case DT_SCE_IMPORT_LIB_ATTR:
 		case DT_SCE_EXPORT_LIB_ATTR:
 			msg("%s  0x%013llx  LID:%x  Attribute:%s\n",
-				dyntag_to_string(tag).c_str(), data, id, attributes_to_string(attridx).c_str());
+				d_tag_to_string(tag).c_str(), data, id, port_attributes_to_string(attridx).c_str());
 			break;		
 		case DT_SCE_ORIGINAL_FILENAME:
 			msg("%s 0x%08llx      %s\n", 
-				dyntag_to_string(tag).c_str(), data, &strtab[nameidx]);
+				d_tag_to_string(tag).c_str(), data, &strtab[nameidx]);
 			break;
 		case DT_SCE_MODULE_ATTR:
 			msg("%s \t 0x%08llx       %s\n",
-				dyntag_to_string(tag).c_str(), data, attributes_to_string(attridx).c_str());
+				d_tag_to_string(tag).c_str(), data, module_attributes_to_string(attridx).c_str());
 			break;
 		case DT_NULL: msg("DT_NULL \t\t -\n");
 			break;
 		}
 	}
 
-	msg("\n[BELF] Loading jmprel...\n");
+	msg("\n[BELF] Loading jmprel segment...\n");
 	load_jmprel(reader, dyndata, dyninfo.jmprel(), symtab, strtab, dynlib);
 
-	msg("\n[BELF] Loading symtab...\n");
+	msg("\n[BELF] Loading symtab segment...\n");
 	load_symtab(dyninfo.symtab(), symtab, strtab, dynlib);
 
-	msg("\n[BELF] Loading rela...\n");
+	msg("\n[BELF] Loading rela segment...\n");
 	load_rela(reader, dyndata, dyninfo.rela());
 
 	delete[] symtab;

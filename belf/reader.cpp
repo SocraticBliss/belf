@@ -1130,21 +1130,22 @@ const char *reader_t::file_type_str() const
 	const char *file_type = "Unknown";
 
 	switch (header.e_type) {
-	case ET_NONE:		 file_type = "None";						break;
-	case ET_REL:		 file_type = "Relocatable";					break;
-	case ET_EXEC:		 file_type = "Executable";					break;
-	case ET_DYN:		 file_type = "Shared object";				break;
-	case ET_CORE:		 file_type = "Core file";					break;
-	case ET_LOPROC:		 file_type = "Processor specific";			break;
-	case ET_HIPROC:		 file_type = "Processor specific";			break;
-	case ET_IRX:		 file_type = "PS2 IRX";						break;
-	case ET_PSPEXEC:	 file_type = "PSP Executable";				break;
-	case ET_PS3PRX:		 file_type = "PS3 PRX";						break;
-	case ET_SCE_EXEC:	 file_type = "PS4 Executable";				break;
-	case ET_SCE_DYNEXEC: file_type = "PS4 Dynamic Executable";		break;
-	case ET_SCE_RELEXEC: file_type = "PS4 Reloacatable Executable";	break;
-	case ET_SCE_STUBLIB: file_type = "PS4 Stub Library";			break;
-	case ET_SCE_DYNAMIC: file_type = "PS4 Dynamic PRX";				break;
+	case ET_NONE:		     file_type = "None";						 break;
+	case ET_REL:		     file_type = "Relocatable";					 break;
+	case ET_EXEC:		     file_type = "Executable";					 break;
+	case ET_DYN:		     file_type = "Shared object";				 break;
+	case ET_CORE:		     file_type = "Core file";					 break;
+	case ET_LOPROC:		     file_type = "Processor specific";			 break;
+	case ET_HIPROC:		     file_type = "Processor specific";			 break;
+	case ET_IRX:		     file_type = "PS2 IRX";						 break;
+	case ET_SCE_EXEC:	     file_type = "PS4 Main Module";				 break;
+	case ET_SCE_REPLAY_EXEC: file_type = "??? PRX";					     break;
+	case ET_SCE_RELEXEC:     file_type = "PS4 Reloacatable PRX";		 break;
+	case ET_SCE_STUBLIB:     file_type = "PS4 Stub Library";			 break;
+	case ET_SCE_DYNEXEC:     file_type = "PS4 Main Module - ALSR";		 break;
+	case ET_SCE_DYNAMIC:     file_type = "PS4 PRX";						 break;
+	case ET_SCE_PSPRELEXEC:  file_type = "PSP2 Relocatable PRX";         break;
+	case ET_SCE_PPURELEXEC:  file_type = "PS3 Relocatable PRX";          break;
 	}
 
 	return file_type;
@@ -1803,7 +1804,7 @@ bool reader_t::parse_dynamic_info(dynamic_info_t *dyninfo,
 
 		default:
 			msg("UNHANDLED: tag: %s \t un: %016llx\n", 
-				dyntag_to_string(dyn->d_tag).c_str(), dyn->d_un);
+				d_tag_to_string(dyn->d_tag).c_str(), dyn->d_un);
 			continue;
 
 		case DT_NULL:

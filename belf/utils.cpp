@@ -9,50 +9,9 @@
 #include "elfr_sce.h"
 #include "utils.h"
 
-qstring ph_type_to_string(uint32 ph_type)
+qstring d_tag_to_string(uint32 d_tag)
 {
-	switch (ph_type) {
-	case PT_NULL: return "PT_NULL";
-	case PT_LOAD: return "PT_LOAD";
-	case PT_DYNAMIC: return "PT_DYNAMIC";
-	case PT_INTERP: return "PT_INTERP";
-	case PT_NOTE: return "PT_NOTE";
-	case PT_SHLIB: return "PT_SHLIB";
-	case PT_PHDR: return "PT_PHDR";
-	case PT_TLS: return "PT_TLS";
-	case PT_LOOS: return "PT_LOOS";
-	case PT_HIOS: return "PT_HIOS";
-	case PT_LOPROC: return "PT_LOPROC";
-	case PT_HIPROC: return "PT_HIPROC";
-
-	case PT_PAX_FLAGS: return "PT_PAX_FLAGS";
-
-	case PT_GNU_EH_FRAME: return "PT_GNU_EH_FRAME";
-	case PT_GNU_STACK: return "PT_GNU_STACK";
-	case PT_GNU_RELRO: return "PT_GNU_RELRO";
-
-	case PT_SUNW_UNWIND: return "PT_SUNW_UNWIND / PT_SUNW_EH_FRAME";
-	case PT_SUNWBSS: return "PT_SUNWBSS";
-	case PT_SUNWSTACK: return "PT_SUNWSTACK";
-	case PT_SUNWDTRACE: return "PT_SUNWDTRACE";
-	case PT_SUNWCAP: return "PT_SUNWCAP";
-
-	case PT_SCE_DYNLIBDATA: return "PT_SCE_DYNLIBDATA";
-	case PT_SCE_PROCPARAM: return "PT_SCE_PROCPARAM";
-	case PT_SCE_MODULEPARAM: return "PT_SCE_MODULEPARAM";
-	case PT_SCE_RELRO: return "PT_SCE_RELRO";
-	case PT_SCE_COMMENT: return "PT_SCE_COMMENT";
-	case PT_SCE_LIBVERSION: return "PT_SCE_LIBVERSION";
-	}
-
-	qstring ret;
-	ret.sprnt("UNK_%x", ph_type);
-	return ret;
-}
-
-qstring dyntag_to_string(uint64 dyntag)
-{
-	switch (dyntag) {
+	switch (d_tag) {
 	case DT_NULL: return "DT_NULL";
 	case DT_NEEDED: return "DT_NEEDED";
 	case DT_PLTRELSZ: return "DT_PLTRELSZ";
@@ -89,7 +48,7 @@ qstring dyntag_to_string(uint64 dyntag)
 	case DT_PREINIT_ARRAYSZ: return "DT_PREINIT_ARRAYSZ";
 
 	case DT_LOOS: return "OLD_DT_LOOS";
-    case DT_SCE_HIOS: return "DT_HIOS/DT_VERNEEDNUM";
+	case DT_SCE_HIOS: return "DT_HIOS/DT_VERNEEDNUM";
 	case DT_HIOS: return "OLD_DT_HIOS";
 
 	case DT_SUNW_AUXILIARY: return "DT_LOOS / DT_SUNW_AUXILIARY";
@@ -114,7 +73,7 @@ qstring dyntag_to_string(uint64 dyntag)
 	case DT_SUNW_NXHEAP: return "DT_SUNW_NXHEAP";
 	case DT_SUNW_NXSTACK: return "DT_SUNW_NXSTACK";
 
-    case DT_VALRNGLO: return "DT_VALRNGLO";
+	case DT_VALRNGLO: return "DT_VALRNGLO";
 	case DT_GNU_PRELINKED: return "DT_GNU_PRELINKED";
 	case DT_GNU_CONFLICTSZ: return "DT_GNU_CONFLICTSZ";
 	case DT_GNU_LIBLISTSZ: return "DT_GNU_LIBLISTSZ";
@@ -126,7 +85,7 @@ qstring dyntag_to_string(uint64 dyntag)
 	case DT_POSFLAG_1: return "DT_POSFLAG_1";
 	case DT_SYMINSZ: return "DT_SYMINSZ";
 	case DT_SYMINENT: return "DT_SYMINENT / DT_VALRNGHI";
-	//DT_VALRNGHI
+	     //DT_VALRNGHI
 
 	case DT_ADDRRNGLO: return "DT_ADDRRNGLO";
 	case DT_GNU_HASH: return "DT_GNU_HASH";
@@ -140,7 +99,7 @@ qstring dyntag_to_string(uint64 dyntag)
 	case DT_PLTPAD: return "DT_PLTPAD";
 	case DT_MOVETAB: return "DT_MOVETAB";
 	case DT_SYMINFO: return "DT_SYMINFO / DT_ADDRRNGHI";
-	//DT_ADDRRNGHI
+		//DT_ADDRRNGHI
 
 	case DT_RELACOUNT: return "DT_RELACOUNT";
 	case DT_RELCOUNT: return "DT_RELCOUNT";
@@ -148,7 +107,7 @@ qstring dyntag_to_string(uint64 dyntag)
 	case DT_VERDEF: return "DT_VERDEF";
 	case DT_VERDEFNUM: return "DT_VERDEFNUM";
 	case DT_VERNEED: return "DT_VERNEED";
-	//DT_VERNEEDNUM
+		//DT_VERNEEDNUM
 
 	case DT_VERSYM: return "DT_VERSYM";
 
@@ -157,7 +116,7 @@ qstring dyntag_to_string(uint64 dyntag)
 
 	case DT_AUXILIARY: return "DT_AUXILIARY";
 	case DT_USED: return "DT_USED";
-	//DT_FILTER
+		//DT_FILTER
 
 	case DT_SCE_IDTABENTSZ: return "DT_SCE_IDTABENTSZ";
 	case DT_SCE_FINGERPRINT: return "DT_SCE_FINGERPRINT";
@@ -190,30 +149,17 @@ qstring dyntag_to_string(uint64 dyntag)
 	}
 
 	qstring ret;
-	ret.sprnt("UNK_%llx", dyntag);
+	ret.sprnt("UNK_%llx", d_tag);
 	return ret;
 }
 
-qstring attributes_to_string(uint32 attributes)
+qstring p_flags_to_string(uint32 p_flags)
 {
-	switch (attributes) {
-	case AT_SCE_AUTO_EXPORT: return "AUTO_EXPORT";
-	case AT_SCE_LOOSE_IMPORT: return "LOOSE_IMPORT";
-	case AT_SCE_AELI: return "AUTO_EXPORT|LOOSE_IMPORT";
-	}
-
-	qstring ret;
-	ret.sprnt("None", attributes);
-	return ret;
-}
-
-qstring flags_to_string(uint32 flags)
-{
-	switch (flags) {
+	switch (p_flags) {
 	case PF_X: return "Execute";
 	case PF_W: return "Write";
-	case PF_R: return "Read";
 	case PF_WX: return "Write, Execute";
+	case PF_R: return "Read";
 	case PF_RX: return "Read, Execute";
 	case PF_RW: return "Read, Write";
 	case PF_RWX: return "Read, Write, Execute";
@@ -222,7 +168,80 @@ qstring flags_to_string(uint32 flags)
 	}
 
 	qstring ret;
-	ret.sprnt("None", flags);
+	ret.sprnt("None", p_flags);
+	return ret;
+}
+
+qstring p_type_to_string(uint32 p_type)
+{
+	switch (p_type) {
+	case PT_NULL: return "PT_NULL";
+	case PT_LOAD: return "PT_LOAD";
+	case PT_DYNAMIC: return "PT_DYNAMIC";
+	case PT_INTERP: return "PT_INTERP";
+	case PT_NOTE: return "PT_NOTE";
+	case PT_SHLIB: return "PT_SHLIB";
+	case PT_PHDR: return "PT_PHDR";
+	case PT_TLS: return "PT_TLS";
+	case PT_LOOS: return "PT_LOOS";
+	case PT_HIOS: return "PT_HIOS";
+	case PT_LOPROC: return "PT_LOPROC";
+	case PT_HIPROC: return "PT_HIPROC";
+
+	case PT_PAX_FLAGS: return "PT_PAX_FLAGS";
+
+	case PT_GNU_EH_FRAME: return "PT_GNU_EH_FRAME";
+	case PT_GNU_STACK: return "PT_GNU_STACK";
+	case PT_GNU_RELRO: return "PT_GNU_RELRO";
+
+	case PT_SUNW_UNWIND: return "PT_SUNW_UNWIND / PT_SUNW_EH_FRAME";
+	case PT_SUNWBSS: return "PT_SUNWBSS";
+	case PT_SUNWSTACK: return "PT_SUNWSTACK";
+	case PT_SUNWDTRACE: return "PT_SUNWDTRACE";
+	case PT_SUNWCAP: return "PT_SUNWCAP";
+
+	case PT_SCE_DYNLIBDATA: return "PT_SCE_DYNLIBDATA";
+	case PT_SCE_PROCPARAM: return "PT_SCE_PROCPARAM";
+	case PT_SCE_MODULEPARAM: return "PT_SCE_MODULEPARAM";
+	case PT_SCE_RELRO: return "PT_SCE_RELRO";
+	case PT_SCE_COMMENT: return "PT_SCE_COMMENT";
+	case PT_SCE_LIBVERSION: return "PT_SCE_LIBVERSION";
+	}
+
+	qstring ret;
+	ret.sprnt("UNK_%x", p_type);
+	return ret;
+}
+
+
+qstring port_attributes_to_string(uint32 attributes)
+{
+	switch (attributes) {
+	case AT_SCE_AUTO_EXPORT: return "AUTO_EXPORT";
+	case AT_SCE_WEAK_EXPORT: return "WEAK_EXPORT";
+	case AT_SCE_LOOSE_IMPORT: return "LOOSE_IMPORT";
+	case AT_SCE_AELI: return "AUTO_EXPORT|LOOSE_IMPORT";
+	case AT_SCE_WELI: return "WEAK_EXPORT|LOOSE_IMPORT";
+	}
+
+	qstring ret;
+	ret.sprnt("None", attributes);
+	return ret;
+}
+
+qstring module_attributes_to_string(uint32 attributes)
+{
+	switch (attributes) {
+	case AT_SCE_CANT_STOP: return "CANT_STOP";
+	case AT_SCE_EXCLUSIVE_LOAD: return "EXCLUSIVE_LOAD";
+	case AT_SCE_EXCLUSIVE_START: return "EXCLUSIVE_START";
+	case AT_SCE_CAN_RESTART: return "CAN_RESTART";
+	case AT_SCE_CAN_RELOCATE: return "CAN_RELOCATE";
+	case AT_SCE_CANT_SHARE: return "CANT_SHARE";
+	}
+
+	qstring ret;
+	ret.sprnt("None", attributes);
 	return ret;
 }
 

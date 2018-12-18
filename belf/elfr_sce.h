@@ -10,11 +10,14 @@
 
 enum elf_ET_SCE
 {
-    ET_SCE_EXEC    = 0xfe00,  // PS4 Executable
-    ET_SCE_RELEXEC = 0xfe04,  // PS4 Relocatable PRX
-    ET_SCE_STUBLIB = 0xfe0c,  // PS4 Stub library
-    ET_SCE_DYNEXEC = 0xfe10,  // PS4 Main module
-    ET_SCE_DYNAMIC = 0xfe18   // PS4 Dynamic PRX
+	ET_SCE_EXEC        = 0xfe00, // PS4 Main Module
+	ET_SCE_REPLAY_EXEC = 0xfe01, // ? PRX
+    ET_SCE_RELEXEC     = 0xfe04, // PS4 Relocatable PRX
+    ET_SCE_STUBLIB     = 0xfe0c, // PS4 Stub Library
+    ET_SCE_DYNEXEC     = 0xfe10, // PS4 Main Module - ALSR
+    ET_SCE_DYNAMIC     = 0xfe18, // PS4 PRX
+	ET_SCE_PSPRELEXEC  = 0xffa0, // PSV Relocatable PRX
+	ET_SCE_PPURELEXEC  = 0xffa4  // PS3 Relocatable PRX
 };
 
 enum elf_DTAG_SCE
@@ -60,11 +63,23 @@ enum elf_SEGTYPE_SCE
     PT_SCE_LIBVERSION  = 0x6fffff01
 };
 
-enum elf_ATTRIB_SCE
+enum elf_PORT_ATTRIB_SCE
 {
 	AT_SCE_AUTO_EXPORT  = 0x1,
+	AT_SCE_WEAK_EXPORT  = 0x2,
 	AT_SCE_LOOSE_IMPORT = 0x8,
-	AT_SCE_AELI = 0x9
+	AT_SCE_AELI         = 0x9,
+	AT_SCE_WELI         = 0x10
+};
+
+enum elf_MODULE_ATTRIB_SCE
+{
+	AT_SCE_CANT_STOP       = 0x1,
+	AT_SCE_EXCLUSIVE_LOAD  = 0x2,
+	AT_SCE_EXCLUSIVE_START = 0x4,
+	AT_SCE_CAN_RESTART     = 0x8,
+	AT_SCE_CAN_RELOCATE    = 0x10,
+	AT_SCE_CANT_SHARE      = 0x20
 };
 
 enum elf_SEGFLAGS_SCE
