@@ -240,6 +240,20 @@ qstring module_attributes_to_string(uint32 attributes)
 	return ret;
 }
 
+qstring rela_type_to_string(uint32 rela_type)
+{
+	switch (rela_type) {
+	case R_X86_64_64: return "R_X86_64_64";
+	case R_X86_64_GLOB_DAT: return "R_X86_64_GLOB_DAT";
+	case R_X86_64_JUMP_SLOT: return "R_X86_64_JUMP_SLOT";
+	case R_X86_64_RELATIVE: return "R_X86_64_RELATIVE";
+	}
+
+	qstring ret;
+	ret.sprnt("", rela_type);
+	return ret;
+}
+
 int decode_base64(const char *str, int *a2)
 {
 	char chr; // dl@1

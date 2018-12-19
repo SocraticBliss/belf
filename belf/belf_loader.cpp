@@ -140,7 +140,8 @@ bool __fastcall elf_set_compiler(__int16 machine, char flags, char osabi)
 	return set_compiler(cc, 4i64, abiname);
 }
 
-void createSegment(const char *name, uint32 flags, uchar bitness, uchar type, ea_t start, ea_t end)
+// Creating IDA Segment
+void create_segment(const char *name, uint32 flags, uchar bitness, uchar type, ea_t start, ea_t end)
 {
 	static sel_t g_sel = 0;
 	segment_t s;
@@ -167,14 +168,15 @@ void createSegment(const char *name, uint32 flags, uchar bitness, uchar type, ea
 		loader_failure("Could not create segment '%s' at %a..%a", name, s.start_ea, s.end_ea, s.start_ea);
 }
 
-void load_jmprel(reader_t &reader, elf_phdr_t &dyndata, dynamic_info_t::entry_t &jmprel_entry, elf_sym_t *&symtab, char *&strtab, DynLib &dynlib)
+// Loading Sections
+void load_relaplt(reader_t &reader, elf_phdr_t &dyndata, dynamic_info_t::entry_t &jmprel_entry, elf_sym_t *&symtab, char *&strtab, DynLib &dynlib)
 {
 	elf_rela_t *jmprel = new elf_rela_t[jmprel_entry.size / sizeof(elf_rela_t)];
 
 	reader.seek(dyndata.p_offset + jmprel_entry.addr);
 	
 	if (reader.safe_read(jmprel, jmprel_entry.size, false) != 0)
-		loader_failure("Failed reading jmprel segment!");
+		loader_failure("Failed reading .rela.plt section!");
 
 	for (int i = 0; i < (jmprel_entry.size / sizeof(Elf64_Rela)); i++)
 	{
@@ -183,7 +185,7 @@ void load_jmprel(reader_t &reader, elf_phdr_t &dyndata, dynamic_info_t::entry_t 
 	
 		if (type != R_X86_64_JUMP_SLOT)
 		{
-			msg("Unexpected relocation type %i for jump slot %i\n", type, i);
+			msg("Unexpected relocation type (%i) for jump slot (%i)\n", type, i);
 			continue;
 		}
 
@@ -236,7 +238,10 @@ void load_jmprel(reader_t &reader, elf_phdr_t &dyndata, dynamic_info_t::entry_t 
 		netnode_check(&import_node, module_name.c_str(), 0, true); // "$ IDALDR node for ids loading $"
 		netnode_supset(import_node, jmprel[i].r_offset, func_name.c_str(), 0, 339);
 		import_module(module_name.c_str(), 0, import_node, 0, "linux");
+
+		msg("0x%x \t %s \t %s\n", jmprel[i].r_offset, rela_type_to_string(type).c_str(), func_name.c_str());
 	}
+
 	delete[] jmprel;
 }
 
@@ -275,29 +280,32 @@ void load_symtab(dynamic_info_t::entry_t &symtab_entry, elf_sym_t *&symtab, char
 		{
 			force_name(symtab[i].st_value, func_name.c_str());
 		}
+
+		msg("%i: \t 0x%x \t %s\n", i, symtab[i].st_value, func_name.c_str());
 	}
 }
 
-void load_rela(reader_t &reader, elf_phdr_t &dyndata, dynamic_info_t::entry_t &rela_entry)
+void load_reladyn(reader_t &reader, elf_phdr_t &dyndata, dynamic_info_t::entry_t &rela_entry)
 {
 	elf_rela_t *rela = new elf_rela_t[rela_entry.size / sizeof(elf_rela_t)];
-	
+
 	reader.seek(dyndata.p_offset + rela_entry.addr);
-	
+
 	if (reader.safe_read(rela, rela_entry.size, false) != 0)
-		loader_failure("Failed reading rela segment!");
+		loader_failure("Failed reading .rela.dyn section!");
 
 	for (int i = 0; i < (rela_entry.size / sizeof(elf_sym_t)); i++)
 	{
 		int type = reader.rel_info_type(rela[i]);
-		int idx = reader.rel_info_index(rela[i]);
 
 		if (type < R_X86_64_NONE || type > R_X86_64_RELATIVE64) {
-			msg("Unexpected reloc type %i for rela %i at offset 0x%x\n", type, i, rela[i].r_offset);
+			msg("Unexpected relocation type (%i) for rela (%i) at offset (0x%x)\n", type, i, rela[i].r_offset);
 			continue;
 		}
 
 		put_qword(rela[i].r_offset, rela[i].r_addend);
+
+		msg("0x%x \t %s \t 0x%x\n", rela[i].r_offset, rela_type_to_string(type).c_str(), rela[i].r_addend);
 	}
 
 	delete[] rela;
@@ -344,7 +352,8 @@ void idaapi elf_load_file(linput_t *li, ushort neflags, const char *fileformatna
 	inf.baseaddr = 0;
 	inf.specsegs = reader.is_64() ? 8 : 4;
 
-	msg("\n[BELF] Reading Program Headers...\n");
+	msg("\n[BELF] Processing Program Headers...\n");
+	
 	if (reader.get_header().e_phoff)
 		add_test_feature("pht");
 	else
@@ -359,6 +368,7 @@ void idaapi elf_load_file(linput_t *li, ushort neflags, const char *fileformatna
 	set_imagebase(reader.pheaders.get_image_base());
 	elf_phdr_t dyndata;
 
+	// Program Headers
 	for (int i = 0; i < reader.pheaders.size(); i++)
 	{
 		elf_phdr_t *phdr = reader.pheaders.get(i);
@@ -367,15 +377,16 @@ void idaapi elf_load_file(linput_t *li, ushort neflags, const char *fileformatna
 		
 		switch (phdr->p_type) {
 		case PT_LOAD:
-			createSegment(name, phdr->p_flags, reader.get_seg_bitness(), type, phdr->p_vaddr, phdr->p_vaddr + phdr->p_memsz);
+			create_segment(name, phdr->p_flags, reader.get_seg_bitness(), type, phdr->p_vaddr, phdr->p_vaddr + phdr->p_memsz);
 			file2base(li, phdr->p_offset, phdr->p_vaddr, phdr->p_vaddr + phdr->p_filesz, FILEREG_PATCHABLE);
 			break;
 		case PT_SCE_RELRO:
-			createSegment(".relro", phdr->p_flags, reader.get_seg_bitness(), SEG_XTRN, phdr->p_vaddr, phdr->p_vaddr + phdr->p_memsz);
+			create_segment(".data.rel.ro", phdr->p_flags, reader.get_seg_bitness(), SEG_XTRN, phdr->p_vaddr, phdr->p_vaddr + phdr->p_memsz);
 			file2base(li, phdr->p_offset, phdr->p_vaddr, phdr->p_vaddr + phdr->p_filesz, FILEREG_PATCHABLE);
 			break;
 		case PT_GNU_EH_FRAME:
-			createSegment(".eh_frame", phdr->p_flags, reader.get_seg_bitness(), SEG_DATA, phdr->p_vaddr, phdr->p_vaddr + phdr->p_memsz);
+
+			create_segment(".eh_frame", phdr->p_flags, reader.get_seg_bitness(), SEG_DATA, phdr->p_vaddr, phdr->p_vaddr + phdr->p_memsz);
 			file2base(li, phdr->p_offset, phdr->p_vaddr, phdr->p_vaddr + phdr->p_filesz, FILEREG_PATCHABLE);
 			break;
 		case PT_SCE_DYNLIBDATA:
@@ -393,37 +404,37 @@ void idaapi elf_load_file(linput_t *li, ushort neflags, const char *fileformatna
 		msg("  p_align:  0x%llx\n", phdr->p_align);
 	}
 
+	// Program Entry Address
 	inf.start_ip = get_imagebase() + reader.get_header().e_entry;
 	inf.start_cs = getseg(inf.start_ip)->sel;
-	msg("\nEntry Address: 0x%llx \n", reader.get_header().e_entry);
+	msg("\n[BELF] Program Entry Address: 0x%llx\n", reader.get_header().e_entry);
 
-	reader_t::dyninfo_tags_t dyninfo_tags;
-	dynamic_info_t dyninfo;
+	// DYNAMIC segment
+	msg("\n[BELF] Processing DYNAMIC segment...\n");
+	reader_t::dyninfo_tags_t dynamic_tags;
+	dynamic_info_t dynamic;
 	
-	msg("\n[BELF] Reading dyninfo segment...\n");
-	if (!reader.read_dynamic_info_tags(&dyninfo_tags, reader.pheaders.get_dynamic_linking_tables_info()) ||
-		!reader.parse_dynamic_info(&dyninfo, dyninfo_tags))
-		loader_failure("Failed reading dyninfo!");
+	if (!reader.read_dynamic_info_tags(&dynamic_tags, reader.pheaders.get_dynamic_linking_tables_info()) ||
+		!reader.parse_dynamic_info(&dynamic, dynamic_tags))
+		loader_failure("Failed reading DYNAMIC segment!");
 
-	if ((dyninfo.strtab().addr + dyninfo.strtab().size) > dyndata.p_filesz)
-		loader_failure("strtab is out of dyndata!");
+	// .strtab section
+	char *strtab = new char[dynamic.strtab().size];
+	
+	reader.seek(dyndata.p_offset + dynamic.strtab().addr);
 
-	char *strtab = new char[dyninfo.strtab().size];
-	
-	reader.seek(dyndata.p_offset + dyninfo.strtab().addr);
-	
-	if (reader.safe_read(strtab, dyninfo.strtab().size, false) != 0)
-		loader_failure("Failed reading strtab!");
+	if (reader.safe_read(strtab, dynamic.strtab().size, false) != 0)
+		loader_failure("Failed reading .strtab section!");
 
-	elf_sym_t *symtab = new elf_sym_t[dyninfo.symtab().size / sizeof(elf_sym_t)];
+	// .symtab section
+	elf_sym_t *symtab = new elf_sym_t[dynamic.symtab().size / sizeof(elf_sym_t)];
 	
-	reader.seek(dyndata.p_offset + dyninfo.symtab().addr);
-	
-	if (reader.safe_read(symtab, dyninfo.symtab().size, false) != 0)
-		loader_failure("Failed reading symtab!");
+	reader.seek(dyndata.p_offset + dynamic.symtab().addr);
 
-	msg("\n[BELF] Reading Dynamic Tags...\n");
-	for (elf_dyn_t *dyn = dyninfo_tags.begin(); dyn != dyninfo_tags.end(); ++dyn)
+	if (reader.safe_read(symtab, dynamic.symtab().size, false) != 0)
+		loader_failure("Failed reading .symtab section!");
+;
+	for (elf_dyn_t *dyn = dynamic_tags.begin(); dyn != dynamic_tags.end(); ++dyn)
 	{
 		uint64 data = dyn->d_un;
 		uint64 tag = dyn->d_tag;
@@ -510,14 +521,17 @@ void idaapi elf_load_file(linput_t *li, ushort neflags, const char *fileformatna
 		}
 	}
 
-	msg("\n[BELF] Loading jmprel segment...\n");
-	load_jmprel(reader, dyndata, dyninfo.jmprel(), symtab, strtab, dynlib);
+	// .rela.plt section
+	msg("\n[BELF] Processing imported functions...\n");
+	load_relaplt(reader, dyndata, dynamic.jmprel(), symtab, strtab, dynlib);
 
-	msg("\n[BELF] Loading symtab segment...\n");
-	load_symtab(dyninfo.symtab(), symtab, strtab, dynlib);
+	// .symtab section
+	msg("\n[BELF] Processing symbol table...\n");
+	load_symtab(dynamic.symtab(), symtab, strtab, dynlib);
 
-	msg("\n[BELF] Loading rela segment...\n");
-	load_rela(reader, dyndata, dyninfo.rela());
+	// .rela.dyn section
+	msg("\n[BELF] Processing relocation table...\n");
+	load_reladyn(reader, dyndata, dynamic.rela());
 
 	delete[] symtab;
 	delete[] strtab;
