@@ -1,4 +1,7 @@
 
+#ifndef READER_CPP
+#define READER_CPP
+
 #include <algorithm>
 #include <functional>
 #include <set>
@@ -37,8 +40,8 @@ ssize_t reader_t::prepare_error_string(
 	{
 		int eclass = va_arg(va, int);
 		len = qsnprintf(buf, bufsize,
-						"Unknown ELF class %d (should be %d for 32-bit, %d for 64-bit)",
-						eclass, ELFCLASS32, ELFCLASS64);
+			"Unknown ELF class %d (should be %d for 32-bit, %d for 64-bit)",
+			eclass, ELFCLASS32, ELFCLASS64);
 		break;
 	}
 	case BAD_ENDIANNESS:
@@ -46,12 +49,12 @@ ssize_t reader_t::prepare_error_string(
 		int endian = va_arg(va, int);
 		if (endian != ELFDATA2LSB && endian != ELFDATA2MSB)
 			len = qsnprintf(buf, bufsize,
-							"Unknown ELF byte sex %d (should be %d for LSB, %d for MSB)",
-							endian, ELFDATA2LSB, ELFDATA2MSB);
+				"Unknown ELF byte sex %d (should be %d for LSB, %d for MSB)",
+				endian, ELFDATA2LSB, ELFDATA2MSB);
 		else
 			len = qsnprintf(buf, bufsize,
-							"Bad ELF byte sex %d for the indicated machine",
-							endian);
+					"Bad ELF byte sex %d for the indicated machine",
+					endian);
 		break;
 	}
 	case BAD_EHSIZE:
@@ -59,8 +62,8 @@ ssize_t reader_t::prepare_error_string(
 		int sz = va_arg(va, int);
 		int fb = va_arg(va, int);
 		len = qsnprintf(buf, bufsize,
-						"The ELF header entry size is invalid (%d, expected %d)",
-						sz, fb);
+				"The ELF header entry size is invalid (%d, expected %d)",
+				sz, fb);
 		break;
 	}
 	case BAD_PHENTSIZE:
@@ -68,24 +71,29 @@ ssize_t reader_t::prepare_error_string(
 		int sz = va_arg(va, int);
 		int fb = va_arg(va, int);
 		len = qsnprintf(buf, bufsize,
-						"PHT entry size is invalid: %d. Falling back to %d",
-						sz, fb);
+				"PHT entry size is invalid: %d. Falling back to %d",
+				sz, fb);
 		break;
 	}
 	case BAD_PHLOC:
-		len = qstpncpy(buf, "The PHT table size or offset is invalid", bufsize) - buf;
+		len = qstpncpy(buf, 
+				"The PHT table size or offset is invalid", bufsize) - buf;
 		break;
 	case BAD_SHENTSIZE:
-		len = qstpncpy(buf, "The SHT entry size is invalid", bufsize) - buf;
+		len = qstpncpy(buf, 
+				"The SHT entry size is invalid", bufsize) - buf;
 		break;
 	case BAD_SHLOC:
-		len = qstpncpy(buf, "SHT table size or offset is invalid", bufsize) - buf;
+		len = qstpncpy(buf, 
+				"SHT table size or offset is invalid", bufsize) - buf;
 		break;
 	case BAD_DYN_PLT_TYPE:
-		len = qsnprintf(buf, bufsize, "Bad DT_PLTREL value (%d)", va_arg(va, int));
+		len = qsnprintf(buf, bufsize, 
+				"Bad DT_PLTREL value (%d)", va_arg(va, int));
 		break;
 	case CONFLICTING_FILE_TYPE:
-		len = qstpncpy(buf, "ELF file with PHT can not be ET_REL", bufsize) - buf;
+		len = qstpncpy(buf, 
+				"ELF file with PHT can not be ET_REL", bufsize) - buf;
 		break;
 	case BAD_SHSTRNDX:
 	{
@@ -119,15 +127,16 @@ ssize_t reader_t::prepare_error_string(
 }
 
 //----------------------------------------------------------------------------
-static bool default_error_handler(const reader_t &reader, reader_t::errcode_t code, ...)
+static bool default_error_handler(
+	const reader_t &reader, 
+	reader_t::errcode_t code, 
+	...)
 {
 	va_list va;
 	va_start(va, code);
 	char buf[MAXSTR];
-	
 	reader.prepare_error_string(buf, sizeof(buf), code, va);
 	va_end(va);
-
 	warning("%s", buf);
 
 	return reader.is_warning(code); // resume after warnings
@@ -240,7 +249,9 @@ bool reader_t::is_error(errcode_t code) const
 }
 
 //----------------------------------------------------------------------------
-static bool _silent_handler(const reader_t &reader, reader_t::errcode_t code, ...)
+static bool _silent_handler(
+	const reader_t &reader,
+	reader_t::errcode_t code, ...)
 {
 	return reader.is_warning(code); // resume after warnings
 }
@@ -402,8 +413,8 @@ bool reader_t::check_ident()
 			swap = false;
 		}
 		else if (eff_msb != lincpus[i].msb
-				 && swap16(header.e_machine) == lincpus[i].machine
-				 && IS_EXEC_OR_DYN(swap16(header.e_type)))
+			&& swap16(header.e_machine) == lincpus[i].machine
+			&& IS_EXEC_OR_DYN(swap16(header.e_type)))
 		{
 			matched = true;
 			swap = true;
@@ -416,7 +427,8 @@ bool reader_t::check_ident()
 				header.e_machine = swap16(header.e_machine);
 				header.e_type = swap16(header.e_type);
 				
-				if (!handle_error(*this, BAD_ENDIANNESS, header.e_ident.bytesex))
+				if (!handle_error(*this, 
+					BAD_ENDIANNESS, header.e_ident.bytesex))
 					return false;
 				
 				eff_msb = lincpus[i].msb;
@@ -607,7 +619,7 @@ bool reader_t::read_header()
 							   + uint64(header.real_shnum) 
 							   * header.e_shentsize;
 		
-		if ((sections_start > sections_finish) || (sections_finish > size()))
+		if (sections_start > sections_finish || sections_finish > size())
 		{
 			if (!handle_error(*this,
 				BAD_SHLOC,
@@ -3156,3 +3168,5 @@ arm_arch_specific_t::isa_t arm_arch_specific_t::get_isa(const sym_rel &symbol) c
 
 	return current_isa;
 }
+
+#endif // READER_CPP
