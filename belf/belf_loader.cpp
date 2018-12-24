@@ -5,6 +5,7 @@
 #include <ida.hpp>
 #include <idp.hpp>
 #include <loader.hpp>
+#include <struct.hpp>
 #include <typeinf.hpp>
 
 #include "dynlib.h"
@@ -298,7 +299,7 @@ void load_reladyn(reader_t &reader, elf_phdr_t &dyndata, dynamic_info_t::entry_t
 	reader.seek(dyndata.p_offset + rela_entry.addr);
 
 	// .rela.dyn section
-	if (reader.safe_read(rela, rela_entry.size, false) != 0)
+	if (reader.safe_read(rela, (rela_entry.size / sizeof(elf_sym_t)), false) != 0)
 		loader_failure("Failed reading .rela.dyn section!");
 
 	for (int i = 0; i < (rela_entry.size / sizeof(elf_sym_t)); i++)
@@ -518,6 +519,48 @@ void idaapi elf_load_file(linput_t *li, ushort neflags, const char *fileformatna
 	if (outside)
 	{
 		// If outside the DYNAMIC segment...
+
+		// Elf64_Rela Structure
+		uint64 struc_size = sizeof(Elf64_Rela);
+
+		struc_t *sptr_rela = get_struc(add_struc(BADADDR, "Elf64_Rela", 0));
+		add_struc_member(sptr_rela, "r_offset", 0x0, qword_flag(), NULL, 0x8);
+		add_struc_member(sptr_rela, "r_info", 0x8, qword_flag(), NULL, 0x8);
+		add_struc_member(sptr_rela, "r_addend", 0x10, qword_flag(), NULL, 0x8);
+
+		// Dynamic Rela Entries
+		msg("dynamic rela entries count: %x\n", (dynamic.rela().size / struc_size));
+
+		for (int i = 0; i < (dynamic.rela().size / struc_size); i++)
+			create_struct((dynamic.rela().addr + (i * struc_size)), struc_size, sptr_rela->id);
+
+		// Elf64_Sym Structure
+		struc_t *sptr_sym = get_struc(add_struc(BADADDR, "Elf64_Sym", 0));
+		add_struc_member(sptr_sym, "st_name", 0x0, dword_flag(), NULL, 0x4);
+		add_struc_member(sptr_sym, "st_info", 0x4, byte_flag(), NULL, 0x1);
+		add_struc_member(sptr_sym, "st_other", 0x5, byte_flag(), NULL, 0x1);
+		add_struc_member(sptr_sym, "st_shndx", 0x6, word_flag(), NULL, 0x2);
+		add_struc_member(sptr_sym, "st_value", 0x8, qword_flag(), NULL, 0x8);
+		add_struc_member(sptr_sym, "st_size", 0x10, qword_flag(), NULL, 0x8);
+		
+		// Dynamic String Table Entries
+		struc_size = sizeof(Elf64_Sym);
+
+		msg("dynamic string table entries count: %x\n", (dynamic.strtab().size / struc_size));
+
+		for (int i = 0; i < (dynamic.strtab().size / struc_size); i++)
+			create_struct((dynamic.strtab().addr + (i * struc_size)), struc_size, sptr_sym->id);
+
+		// Dynamic Symbol Table Entries
+		msg("dynamic symbol table entries count: %x\n", (dynamic.symtab().size / struc_size));
+
+		for (int i = 0; i < (dynamic.symtab().size / struc_size); i++)
+			create_struct((dynamic.symtab().addr + (i * struc_size)), struc_size, sptr_sym->id);
+		
+		// Elf64_Dyn Structure
+		struc_t *sptr_dyn = get_struc(add_struc(BADADDR, "Elf64_Dyn", 0));
+		add_struc_member(sptr_dyn, "d_tag", 0x0, qword_flag(), NULL, 0x8);
+		add_struc_member(sptr_dyn, "d_un", 0x8, qword_flag(), NULL, 0x8);
 	}
 	else
 	{
