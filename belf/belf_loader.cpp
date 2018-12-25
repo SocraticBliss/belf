@@ -180,16 +180,24 @@ void load_relaplt(reader_t &reader, elf_phdr_t &dyndata, dynamic_info_t::entry_t
 	elf_rela_t *jmprel = new elf_rela_t[jmprel_entry.size / sizeof(elf_rela_t)];
 
 	reader.seek(dyndata.p_offset + jmprel_entry.addr);
-	
-	// .rela.plt section
+
 	if (reader.safe_read(jmprel, jmprel_entry.size, false) != 0)
 		loader_failure("Failed reading .rela.plt section!");
 
-	for (int i = 0; i < (jmprel_entry.size / sizeof(Elf64_Rela)); i++)
+	// Elf64_Rela Structure
+	uint64 struc_size = sizeof(elf_rela_t);
+
+	struc_t *sptr_rela = get_struc(add_struc(BADADDR, "Elf64_Rela", 0));
+	add_struc_member(sptr_rela, "r_offset", 0x0, qword_flag(), NULL, 0x8);
+	add_struc_member(sptr_rela, "r_info", 0x8, qword_flag(), NULL, 0x8);
+	add_struc_member(sptr_rela, "r_addend", 0x10, qword_flag(), NULL, 0x8);
+	
+	// .rela.plt section
+	for (int i = 0; i < (jmprel_entry.size / struc_size); i++)
 	{
 		int type = reader.rel_info_type(jmprel[i]);
 		int idx = reader.rel_info_index(jmprel[i]);
-	
+
 		if (type != R_X86_64_JUMP_SLOT)
 		{
 			msg("Unexpected relocation type (%i) for jump slot (%i)\n", type, i);
@@ -197,7 +205,6 @@ void load_relaplt(reader_t &reader, elf_phdr_t &dyndata, dynamic_info_t::entry_t
 		}
 
 		/* I really dunno why commenting these out causes things to work correctly, if someone does, let me know!
-
 		if (idx >= (jmprel_entry.size / sizeof(elf_sym_t)))
 		{
 			msg("Invalid symbol index %i for relocation %i at offset 0x%x\n", idx, i, jmprel[i].r_offset);
@@ -209,7 +216,6 @@ void load_relaplt(reader_t &reader, elf_phdr_t &dyndata, dynamic_info_t::entry_t
 			msg("Symbol index %i for relocation %i at offset 0x%x\n", idx, i, jmprel[i].r_offset);
 			//msg("%012llx %012llx Symbol index %i for relocation %i\n", jmprel[i].r_offset, jmprel[i].r_info, idx, i);
 		}
-
 		if (symtab[idx].st_name >= jmprel_entry.size)
 		{
 			msg("Invalid symbol string offset %x of symbol %i for relocation %i\n", symtab[idx].st_name, idx, i);
@@ -245,8 +251,10 @@ void load_relaplt(reader_t &reader, elf_phdr_t &dyndata, dynamic_info_t::entry_t
 		netnode_check(&import_node, module_name.c_str(), 0, true); // "$ IDALDR node for ids loading $"
 		netnode_supset(import_node, jmprel[i].r_offset, func_name.c_str(), 0, 339);
 		import_module(module_name.c_str(), 0, import_node, 0, "linux");
+		
+		//msg(".rela.plt %i: 0x%x \t %s \t %s\n", i, jmprel[i].r_offset, rela_type_to_string(type).c_str(), func_name.c_str());
 
-		msg("0x%x \t %s \t %s\n", jmprel[i].r_offset, rela_type_to_string(type).c_str(), func_name.c_str());
+		create_struct((jmprel_entry.addr + (i * struc_size)), struc_size, sptr_rela->id);
 	}
 
 	delete[] jmprel;
@@ -254,7 +262,19 @@ void load_relaplt(reader_t &reader, elf_phdr_t &dyndata, dynamic_info_t::entry_t
 
 void load_symtab(dynamic_info_t::entry_t &symtab_entry, elf_sym_t *&symtab, char *&strtab, DynLib &dynlib)
 {
-	for (int i = 0; i < (symtab_entry.size / sizeof(elf_sym_t)); i++)
+	// Elf64_Sym Structure
+	uint64 struc_size = sizeof(elf_sym_t);
+
+	struc_t *sptr_sym = get_struc(add_struc(BADADDR, "Elf64_Sym", 0));
+	add_struc_member(sptr_sym, "st_name", 0x0, dword_flag(), NULL, 0x4);
+	add_struc_member(sptr_sym, "st_info", 0x4, byte_flag(), NULL, 0x1);
+	add_struc_member(sptr_sym, "st_other", 0x5, byte_flag(), NULL, 0x1);
+	add_struc_member(sptr_sym, "st_shndx", 0x6, word_flag(), NULL, 0x2);
+	add_struc_member(sptr_sym, "st_value", 0x8, qword_flag(), NULL, 0x8);
+	add_struc_member(sptr_sym, "st_size", 0x10, qword_flag(), NULL, 0x8);
+
+	// .symtab section
+	for (int i = 0; i < (symtab_entry.size / struc_size); i++)
 	{
 		if (symtab[i].st_value == 0)
 			continue;
@@ -265,7 +285,7 @@ void load_symtab(dynamic_info_t::entry_t &symtab_entry, elf_sym_t *&symtab, char
 		if (dynlib.is_obfuscated(func_name.c_str()))
 		{
 			uint32 module_idx = dynlib.lookup(func_name.c_str());
-			
+
 			if (module_idx != -1)
 				module_name = &strtab[module_idx];
 
@@ -274,7 +294,7 @@ void load_symtab(dynamic_info_t::entry_t &symtab_entry, elf_sym_t *&symtab, char
 			set_cmt(symtab[i].st_value, obf_name.c_str(), true);
 
 			qstring deobf_name = dynlib.deobfuscate(func_name);
-			
+
 			if (deobf_name != "")
 				func_name = deobf_name;
 		}
@@ -288,7 +308,41 @@ void load_symtab(dynamic_info_t::entry_t &symtab_entry, elf_sym_t *&symtab, char
 			force_name(symtab[i].st_value, func_name.c_str());
 		}
 
-		msg("%i: \t 0x%x \t %s\n", i, symtab[i].st_value, func_name.c_str());
+		//msg(".symtab %i: 0x%x \t %s\n", i, symtab[i].st_value, func_name.c_str());
+
+		create_struct((symtab_entry.addr + (i * struc_size)), struc_size, sptr_sym->id);
+	}
+}
+
+void load_strtab(reader_t &reader, elf_phdr_t &dyndata, dynamic_info_t::entry_t &strtab_entry)
+{
+	elf_sym_t *str = new elf_sym_t[strtab_entry.size / sizeof(elf_sym_t)];
+	
+	reader.seek(dyndata.p_offset + strtab_entry.addr);
+
+	if (reader.safe_read(str, (strtab_entry.size / sizeof(elf_sym_t)), false) != 0)
+		loader_failure("Failed reading .strtab section!");
+
+	// Elf64_Sym Structure
+	uint64 struc_size = sizeof(elf_sym_t);
+
+	struc_t *sptr_sym = get_struc(add_struc(BADADDR, "Elf64_Sym", 0));
+	add_struc_member(sptr_sym, "st_name", 0x0, dword_flag(), NULL, 0x4);
+	add_struc_member(sptr_sym, "st_info", 0x4, byte_flag(), NULL, 0x1);
+	add_struc_member(sptr_sym, "st_other", 0x5, byte_flag(), NULL, 0x1);
+	add_struc_member(sptr_sym, "st_shndx", 0x6, word_flag(), NULL, 0x2);
+	add_struc_member(sptr_sym, "st_value", 0x8, qword_flag(), NULL, 0x8);
+	add_struc_member(sptr_sym, "st_size", 0x10, qword_flag(), NULL, 0x8);
+
+	// .strtab section
+	for (int i = 0; i < (strtab_entry.size / struc_size); i++)
+	{
+		if (str[i].st_value == 0)
+			continue;
+		
+		//msg(".strtab %i: value: 0x%x\n", i, str[i].st_value);
+
+		create_struct((strtab_entry.addr + (i * struc_size)), struc_size, sptr_sym->id);
 	}
 }
 
@@ -298,22 +352,33 @@ void load_reladyn(reader_t &reader, elf_phdr_t &dyndata, dynamic_info_t::entry_t
 
 	reader.seek(dyndata.p_offset + rela_entry.addr);
 
-	// .rela.dyn section
-	if (reader.safe_read(rela, (rela_entry.size / sizeof(elf_sym_t)), false) != 0)
+	if (reader.safe_read(rela, rela_entry.size, false) != 0)
 		loader_failure("Failed reading .rela.dyn section!");
 
+	// Elf64_Dyn Structure
+	struc_t *sptr_dyn = get_struc(add_struc(BADADDR, "Elf64_Dyn", 0));
+	add_struc_member(sptr_dyn, "d_tag", 0x0, qword_flag(), NULL, 0x8);
+	add_struc_member(sptr_dyn, "d_un", 0x8, qword_flag(), NULL, 0x8);
+
+	// .rela.dyn section
 	for (int i = 0; i < (rela_entry.size / sizeof(elf_sym_t)); i++)
 	{
+		if (rela[i].r_offset == 0)
+			continue;
+		
 		int type = reader.rel_info_type(rela[i]);
 
-		if (type < R_X86_64_NONE || type > R_X86_64_RELATIVE64) {
+		if (type < R_X86_64_NONE || type > R_X86_64_RELATIVE64)
+		{
 			msg("Unexpected relocation type (%i) for rela (%i) at offset (0x%x)\n", type, i, rela[i].r_offset);
 			continue;
 		}
 
 		put_qword(rela[i].r_offset, rela[i].r_addend);
 
-		msg("0x%x \t %s \t 0x%x\n", rela[i].r_offset, rela_type_to_string(type).c_str(), rela[i].r_addend);
+		//msg(".rela.dyn %i: 0x%x \t %s \t 0x%x\n", i, rela[i].r_offset, rela_type_to_string(type).c_str(), rela[i].r_addend);
+
+		//create_struct((rela_entry.addr + (i * sizeof(elf_dyn_t))), sizeof(elf_dyn_t), sptr_dyn->id);
 	}
 
 	delete[] rela;
@@ -375,6 +440,7 @@ void idaapi elf_load_file(linput_t *li, ushort neflags, const char *fileformatna
 	
 	// Program Headers
 	elf_phdr_t dyndata;
+	bool has_dynamic = false;
 
 	msg("\n[BELF] Processing Program Headers...\n");
 	for (int i = 0; i < reader.pheaders.size(); i++)
@@ -396,7 +462,9 @@ void idaapi elf_load_file(linput_t *li, ushort neflags, const char *fileformatna
 			break;
 		case PT_SCE_DYNLIBDATA:
 			dyndata = *phdr;
-			break;		
+			break;
+		case PT_DYNAMIC:
+			has_dynamic = true;
 		}
 
 		msg("%d %s:\n", i, p_type_to_string(phdr->p_type).c_str());
@@ -409,177 +477,192 @@ void idaapi elf_load_file(linput_t *li, ushort neflags, const char *fileformatna
 		msg("  p_align:  0x%llx\n", phdr->p_align);
 	}
 
-	// DYNAMIC segment
-	msg("\n[BELF] Processing DYNAMIC segment...\n");
-	reader_t::dyninfo_tags_t dynamic_tags;
-	dynamic_info_t dynamic;
-	bool outside = false;
-
-	if (!reader.read_dynamic_info_tags(&dynamic_tags, reader.pheaders.get_dynamic_linking_tables_info()) ||
-		!reader.parse_dynamic_info(&dynamic, dynamic_tags))
-		loader_failure("Failed reading DYNAMIC segment!");
-
-	// .strtab section
-	char *strtab = new char[dynamic.strtab().size];
-
-	reader.seek(dyndata.p_offset + dynamic.strtab().addr);
-	reader.safe_read(strtab, dynamic.strtab().size, false);
-
-	// .symtab section
-	elf_sym_t *symtab = new elf_sym_t[dynamic.symtab().size / sizeof(elf_sym_t)];
-
-	reader.seek(dyndata.p_offset + dynamic.symtab().addr);
-	reader.safe_read(symtab, dynamic.symtab().size, false);
-
-	if ((dynamic.strtab().addr + dynamic.strtab().size) > dyndata.p_filesz)
-		outside = true;
-
-	// tags
-	for (elf_dyn_t *dyn = dynamic_tags.begin(); dyn != dynamic_tags.end(); ++dyn)
+	if (has_dynamic)
 	{
-		uint64 data = dyn->d_un;
-		uint64 tag = dyn->d_tag;
-		uint32 id = data >> 48;
-		uint32 nameidx = data & 0xFFFFFFFF;
-		uint32 attridx = data & 0xF;
+		// DYNAMIC segment
+		msg("\n[BELF] Processing DYNAMIC segment...\n");
+		reader_t::dyninfo_tags_t dynamic_tags;
+		dynamic_info_t dynamic;
+		bool outside = false;
 
-		switch (tag) {
-		case DT_SCE_HASH:
-		case DT_SCE_STRTAB:
-		case DT_SCE_SYMTAB:
-		case DT_SCE_PLTGOT:
-		case DT_SCE_JMPREL:
-		case DT_SCE_RELA:
-		case DT_INIT_ARRAY:
-		case DT_FINI_ARRAY:
-		case DT_PREINIT_ARRAY:
-		case DT_SCE_FINGERPRINT:
-			msg("%s \t 0x%08llx\n", d_tag_to_string(tag).c_str(), data);
-			break;
-		case DT_SCE_HASHSZ:
-		case DT_SCE_STRSZ:
-		case DT_SCE_SYMTABSZ:
-		case DT_SCE_PLTRELSZ:
-		case DT_SCE_RELASZ:
-		case DT_SCE_RELAENT:
-		case DT_INIT_ARRAYSZ:
-		case DT_FINI_ARRAYSZ:
-		case DT_PREINIT_ARRAYSZ:
-		case DT_SCE_SYMENT:
-			msg("%s \t %d\n", d_tag_to_string(tag).c_str(), data);
-			break;
-		case DT_INIT:
-			msg("DT_INIT \t\t 0x%08llx\n", data);
-			add_entry(reader.get_load_bias() + data,
-				reader.get_load_bias() + data,
-				".init_proc", true);
-			break;
-		case DT_FINI:
-			msg("DT_FINI \t\t 0x%08llx\n", data);
-			add_entry(reader.get_load_bias() + data,
-				reader.get_load_bias() + data,
-				".term_proc", true);
-			break;
-		case DT_SCE_PLTREL:
-			msg("DT_SCE_PLTREL \t %d \t       %s\n", data, d_tag_to_string(data).c_str());
-			break;
-		case DT_DEBUG:
-		case DT_FLAGS:
-			msg("%s \t\t 0x%08llx\n", d_tag_to_string(tag).c_str(), data);
-			break;
-		case DT_SONAME:
-		case DT_NEEDED:
-			msg("%s \t\t 0x%08llx       %s\n", d_tag_to_string(tag).c_str(), data, &strtab[nameidx]);
-			break;
-		case DT_SCE_NEEDED_MODULE:
-		case DT_SCE_MODULE_INFO:
-			msg("%s \t 0x%013llx  MID:%x  Name:%s\n", d_tag_to_string(tag).c_str(), data, id, outside ? "[Error: not in dynamic data]" : &strtab[nameidx]);
-			dynlib.add_module(id, nameidx);
-			break;
-		case DT_SCE_IMPORT_LIB:
-		case DT_SCE_EXPORT_LIB:
-			msg("%s \t 0x%013llx  LID:%x  Name:%s\n", d_tag_to_string(tag).c_str(), data, id, &strtab[nameidx]);
-			break;
-		case DT_SCE_IMPORT_LIB_ATTR:
-		case DT_SCE_EXPORT_LIB_ATTR:
-			msg("%s  0x%013llx  LID:%x  Attribute:%s\n",
-				d_tag_to_string(tag).c_str(), data, id, port_attributes_to_string(attridx).c_str());
-			break;
-		case DT_SCE_ORIGINAL_FILENAME:
-			msg("%s 0x%08llx      %s\n", d_tag_to_string(tag).c_str(), data, outside ? "[Error: not in dynamic data]" : &strtab[nameidx]);
-			break;
-		case DT_SCE_MODULE_ATTR:
-			msg("%s \t 0x%08llx       %s\n", d_tag_to_string(tag).c_str(), data, module_attributes_to_string(attridx).c_str());
-			break;
-		case DT_NULL: msg("DT_NULL \t\t -\n");
-			break;
-		}
-	}
+		if (!reader.read_dynamic_info_tags(&dynamic_tags, reader.pheaders.get_dynamic_linking_tables_info()) ||
+			!reader.parse_dynamic_info(&dynamic, dynamic_tags))
+			loader_failure("Failed reading DYNAMIC segment!");
 
-	if (outside)
-	{
-		// If outside the DYNAMIC segment...
+		// .strtab section
+		char *strtab = new char[dynamic.strtab().size];
 
-		// Elf64_Rela Structure
-		uint64 struc_size = sizeof(Elf64_Rela);
-
-		struc_t *sptr_rela = get_struc(add_struc(BADADDR, "Elf64_Rela", 0));
-		add_struc_member(sptr_rela, "r_offset", 0x0, qword_flag(), NULL, 0x8);
-		add_struc_member(sptr_rela, "r_info", 0x8, qword_flag(), NULL, 0x8);
-		add_struc_member(sptr_rela, "r_addend", 0x10, qword_flag(), NULL, 0x8);
-
-		// Dynamic Rela Entries
-		msg("dynamic rela entries count: %x\n", (dynamic.rela().size / struc_size));
-
-		for (int i = 0; i < (dynamic.rela().size / struc_size); i++)
-			create_struct((dynamic.rela().addr + (i * struc_size)), struc_size, sptr_rela->id);
-
-		// Elf64_Sym Structure
-		struc_t *sptr_sym = get_struc(add_struc(BADADDR, "Elf64_Sym", 0));
-		add_struc_member(sptr_sym, "st_name", 0x0, dword_flag(), NULL, 0x4);
-		add_struc_member(sptr_sym, "st_info", 0x4, byte_flag(), NULL, 0x1);
-		add_struc_member(sptr_sym, "st_other", 0x5, byte_flag(), NULL, 0x1);
-		add_struc_member(sptr_sym, "st_shndx", 0x6, word_flag(), NULL, 0x2);
-		add_struc_member(sptr_sym, "st_value", 0x8, qword_flag(), NULL, 0x8);
-		add_struc_member(sptr_sym, "st_size", 0x10, qword_flag(), NULL, 0x8);
-		
-		// Dynamic String Table Entries
-		struc_size = sizeof(Elf64_Sym);
-
-		msg("dynamic string table entries count: %x\n", (dynamic.strtab().size / struc_size));
-
-		for (int i = 0; i < (dynamic.strtab().size / struc_size); i++)
-			create_struct((dynamic.strtab().addr + (i * struc_size)), struc_size, sptr_sym->id);
-
-		// Dynamic Symbol Table Entries
-		msg("dynamic symbol table entries count: %x\n", (dynamic.symtab().size / struc_size));
-
-		for (int i = 0; i < (dynamic.symtab().size / struc_size); i++)
-			create_struct((dynamic.symtab().addr + (i * struc_size)), struc_size, sptr_sym->id);
-		
-		// Elf64_Dyn Structure
-		struc_t *sptr_dyn = get_struc(add_struc(BADADDR, "Elf64_Dyn", 0));
-		add_struc_member(sptr_dyn, "d_tag", 0x0, qword_flag(), NULL, 0x8);
-		add_struc_member(sptr_dyn, "d_un", 0x8, qword_flag(), NULL, 0x8);
-	}
-	else
-	{
-		// .rela.plt section
-		msg("\n[BELF] Processing imported functions...\n");
-		load_relaplt(reader, dyndata, dynamic.jmprel(), symtab, strtab, dynlib);
+		reader.seek(dyndata.p_offset + dynamic.strtab().addr);
+		reader.safe_read(strtab, dynamic.strtab().size, false);
 
 		// .symtab section
-		msg("\n[BELF] Processing symbol table...\n");
-		load_symtab(dynamic.symtab(), symtab, strtab, dynlib);
+		elf_sym_t *symtab = new elf_sym_t[dynamic.symtab().size / sizeof(elf_sym_t)];
 
-		// .rela.dyn section
-		msg("\n[BELF] Processing relocation table...\n");
-		load_reladyn(reader, dyndata, dynamic.rela());
+		reader.seek(dyndata.p_offset + dynamic.symtab().addr);
+		reader.safe_read(symtab, dynamic.symtab().size, false);
+
+		if ((dynamic.strtab().addr + dynamic.strtab().size) > dyndata.p_filesz)
+			outside = true;
+
+		// tags
+		for (elf_dyn_t *dyn = dynamic_tags.begin(); dyn != dynamic_tags.end(); ++dyn)
+		{
+			uint64 data = dyn->d_un;
+			uint64 tag = dyn->d_tag;
+			uint32 id = data >> 48;
+			uint32 nameidx = data & 0xFFFFFFFF;
+			uint32 attridx = data & 0xF;
+
+			switch (tag) {
+			case DT_SCE_HASH:
+			case DT_SCE_STRTAB:
+			case DT_SCE_SYMTAB:
+			case DT_SCE_PLTGOT:
+			case DT_SCE_JMPREL:
+			case DT_SCE_RELA:
+			case DT_INIT_ARRAY:
+			case DT_FINI_ARRAY:
+			case DT_PREINIT_ARRAY:
+			case DT_SCE_FINGERPRINT:
+				msg("%s \t 0x%08llx\n", d_tag_to_string(tag).c_str(), data);
+				break;
+			case DT_SCE_HASHSZ:
+			case DT_SCE_STRSZ:
+			case DT_SCE_SYMTABSZ:
+			case DT_SCE_PLTRELSZ:
+			case DT_SCE_RELASZ:
+			case DT_SCE_RELAENT:
+			case DT_INIT_ARRAYSZ:
+			case DT_FINI_ARRAYSZ:
+			case DT_PREINIT_ARRAYSZ:
+			case DT_SCE_SYMENT:
+				msg("%s \t %d\n", d_tag_to_string(tag).c_str(), data);
+				break;
+			case DT_INIT:
+				msg("DT_INIT \t\t 0x%08llx\n", data);
+				add_entry(reader.get_load_bias() + data,
+					reader.get_load_bias() + data,
+					".init_proc", true);
+				break;
+			case DT_FINI:
+				msg("DT_FINI \t\t 0x%08llx\n", data);
+				add_entry(reader.get_load_bias() + data,
+					reader.get_load_bias() + data,
+					".term_proc", true);
+				break;
+			case DT_SCE_PLTREL:
+				msg("DT_SCE_PLTREL \t %d \t       %s\n", data, d_tag_to_string(data).c_str());
+				break;
+			case DT_DEBUG:
+			case DT_FLAGS:
+				msg("%s \t\t 0x%08llx\n", d_tag_to_string(tag).c_str(), data);
+				break;
+			case DT_SONAME:
+			case DT_NEEDED:
+				msg("%s \t\t 0x%08llx       %s\n", d_tag_to_string(tag).c_str(), data, &strtab[nameidx]);
+				break;
+			case DT_SCE_NEEDED_MODULE:
+			case DT_SCE_MODULE_INFO:
+				msg("%s \t 0x%013llx  MID:%x  Name:%s\n", d_tag_to_string(tag).c_str(), data, id, outside ? "[Error: not in dynamic data]" : (const char *)&strtab[nameidx]);
+				dynlib.add_module(id, nameidx);
+				break;
+			case DT_SCE_IMPORT_LIB:
+			case DT_SCE_EXPORT_LIB:
+				msg("%s \t 0x%013llx  LID:%x  Name:%s\n", d_tag_to_string(tag).c_str(), data, id, &strtab[nameidx]);
+				break;
+			case DT_SCE_IMPORT_LIB_ATTR:
+			case DT_SCE_EXPORT_LIB_ATTR:
+				msg("%s  0x%013llx  LID:%x  Attribute:%s\n",
+					d_tag_to_string(tag).c_str(), data, id, port_attributes_to_string(attridx).c_str());
+				break;
+			case DT_SCE_ORIGINAL_FILENAME:
+				msg("%s 0x%08llx      %s\n", d_tag_to_string(tag).c_str(), data, outside ? "[Error: not in dynamic data]" : (const char *)&strtab[nameidx]);
+				break;
+			case DT_SCE_MODULE_ATTR:
+				msg("%s \t 0x%08llx       %s\n", d_tag_to_string(tag).c_str(), data, module_attributes_to_string(attridx).c_str());
+				break;
+			case DT_TEXTREL:
+			case DT_NULL:
+				msg("%s \t\t -\n", d_tag_to_string(tag).c_str());
+				break;
+			}
+		}
+
+		if (outside)
+		{
+			// If outside the DYNAMIC segment...
+
+			// Elf64_Rela Structure
+			uint64 struc_size = sizeof(elf_rela_t);
+
+			struc_t *sptr_rela = get_struc(add_struc(BADADDR, "Elf64_Rela", 0));
+			add_struc_member(sptr_rela, "r_offset", 0x0, qword_flag(), NULL, 0x8);
+			add_struc_member(sptr_rela, "r_info", 0x8, qword_flag(), NULL, 0x8);
+			add_struc_member(sptr_rela, "r_addend", 0x10, qword_flag(), NULL, 0x8);
+
+			// .rela.plt section
+			msg("\n[BELF] Processing %i imported functions...\n", dynamic.jmprel().size / struc_size);
+
+			for (int i = 0; i < (dynamic.rela().size / struc_size); i++)
+				create_struct((dynamic.rela().addr + (i * struc_size)), struc_size, sptr_rela->id);
+
+			// Elf64_Sym Structure
+			struc_size = sizeof(elf_sym_t);
+
+			struc_t *sptr_sym = get_struc(add_struc(BADADDR, "Elf64_Sym", 0));
+			add_struc_member(sptr_sym, "st_name", 0x0, dword_flag(), NULL, 0x4);
+			add_struc_member(sptr_sym, "st_info", 0x4, byte_flag(), NULL, 0x1);
+			add_struc_member(sptr_sym, "st_other", 0x5, byte_flag(), NULL, 0x1);
+			add_struc_member(sptr_sym, "st_shndx", 0x6, word_flag(), NULL, 0x2);
+			add_struc_member(sptr_sym, "st_value", 0x8, qword_flag(), NULL, 0x8);
+			add_struc_member(sptr_sym, "st_size", 0x10, qword_flag(), NULL, 0x8);
+
+			// .symtab section
+			msg("\n[BELF] Processing %i symbol table entries...\n", dynamic.symtab().size / struc_size);
+
+			for (int i = 0; i < (dynamic.symtab().size / struc_size); i++)
+				create_struct((dynamic.symtab().addr + (i * struc_size)), struc_size, sptr_sym->id);
+			/*
+			// .strtab section
+			msg("\n[BELF] Processing %i string table entries...\n", dynamic.strtab().size);
+
+			for (int i = 0; i < (dynamic.strtab().size / struc_size); i++)
+				create_struct((dynamic.strtab().addr + (i * struc_size)), struc_size, sptr_sym->id);
+			*/
+			// Elf64_Dyn Structure
+			struc_t *sptr_dyn = get_struc(add_struc(BADADDR, "Elf64_Dyn", 0));
+			add_struc_member(sptr_dyn, "d_tag", 0x0, qword_flag(), NULL, 0x8);
+			add_struc_member(sptr_dyn, "d_un", 0x8, qword_flag(), NULL, 0x8);
+			/*
+			// .rela.dyn section
+			msg("\n[BELF] Processing %i relocation table entries...\n", dynamic.rela().size / struc_size);
+			
+			for (int i = 0; i < (dynamic.rela().size / struc_size); i++)
+				create_struct((dynamic.rela().addr + (i * struc_size)), struc_size, sptr_dyn->id);
+			*/
+		}
+		else
+		{
+			// .rela.plt section
+			msg("\n[BELF] Processing %i imported functions...\n", dynamic.jmprel().size / sizeof(elf_rela_t));
+			load_relaplt(reader, dyndata, dynamic.jmprel(), symtab, strtab, dynlib);
+
+			// .symtab section
+			msg("\n[BELF] Processing %i symbol table entries...\n", dynamic.symtab().size / sizeof(elf_sym_t));
+			load_symtab(dynamic.symtab(), symtab, strtab, dynlib);
+			/*
+			// .strtab section
+			msg("\n[BELF] Processing %i string table entries...\n", dynamic.strtab().size / sizeof(elf_sym_t));
+			load_strtab(reader, dyndata, dynamic.strtab());
+			*/
+			// .rela.dyn section
+			msg("\n[BELF] Processing %i relocation table entries...\n", (dynamic.rela().size / sizeof(elf_sym_t)));
+			load_reladyn(reader, dyndata, dynamic.rela());
+		}
+
+		delete[] symtab;
+		delete[] strtab;
 	}
-
-	delete[] symtab;
-	delete[] strtab;
-
 	msg("\n[BELF] Done!\n");
 
 #ifdef _DEBUG

@@ -1807,6 +1807,7 @@ bool reader_t::parse_dynamic_info(dynamic_info_t *dyninfo,
 				d_tag_to_string(dyn->d_tag).c_str(), dyn->d_un);
 			continue;
 
+		case DT_TEXTREL:
 		case DT_NULL:
 			break;
 		}
