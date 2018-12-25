@@ -601,10 +601,11 @@ void idaapi elf_load_file(linput_t *li, ushort neflags, const char *fileformatna
 			add_struc_member(sptr_rela, "r_addend", 0x10, qword_flag(), NULL, 0x8);
 
 			// .rela.plt section
-			msg("\n[BELF] Processing %i imported functions...\n", dynamic.jmprel().size / struc_size);
+			if ((dynamic.jmprel().size / struc_size) > 0)
+				msg("\n[BELF] Processing %i imported functions...\n", dynamic.jmprel().size / struc_size);
 
-			for (int i = 0; i < (dynamic.rela().size / struc_size); i++)
-				create_struct((dynamic.rela().addr + (i * struc_size)), struc_size, sptr_rela->id);
+				for (int i = 0; i < (dynamic.rela().size / struc_size); i++)
+					create_struct((dynamic.rela().addr + (i * struc_size)), struc_size, sptr_rela->id);
 
 			// Elf64_Sym Structure
 			struc_size = sizeof(elf_sym_t);
@@ -618,10 +619,11 @@ void idaapi elf_load_file(linput_t *li, ushort neflags, const char *fileformatna
 			add_struc_member(sptr_sym, "st_size", 0x10, qword_flag(), NULL, 0x8);
 
 			// .symtab section
-			msg("\n[BELF] Processing %i symbol table entries...\n", dynamic.symtab().size / struc_size);
+			if ((dynamic.symtab().size / struc_size) > 0)
+				msg("\n[BELF] Processing %i symbol table entries...\n", dynamic.symtab().size / struc_size);
 
-			for (int i = 0; i < (dynamic.symtab().size / struc_size); i++)
-				create_struct((dynamic.symtab().addr + (i * struc_size)), struc_size, sptr_sym->id);
+				for (int i = 0; i < (dynamic.symtab().size / struc_size); i++)
+					create_struct((dynamic.symtab().addr + (i * struc_size)), struc_size, sptr_sym->id);
 			/*
 			// .strtab section
 			msg("\n[BELF] Processing %i string table entries...\n", dynamic.strtab().size);
@@ -644,20 +646,24 @@ void idaapi elf_load_file(linput_t *li, ushort neflags, const char *fileformatna
 		else
 		{
 			// .rela.plt section
-			msg("\n[BELF] Processing %i imported functions...\n", dynamic.jmprel().size / sizeof(elf_rela_t));
-			load_relaplt(reader, dyndata, dynamic.jmprel(), symtab, strtab, dynlib);
+			if ((dynamic.jmprel().size / sizeof(elf_rela_t)) > 0)
+				msg("\n[BELF] Processing %i imported functions...\n", dynamic.jmprel().size / sizeof(elf_rela_t));
+				load_relaplt(reader, dyndata, dynamic.jmprel(), symtab, strtab, dynlib);
 
 			// .symtab section
-			msg("\n[BELF] Processing %i symbol table entries...\n", dynamic.symtab().size / sizeof(elf_sym_t));
-			load_symtab(dynamic.symtab(), symtab, strtab, dynlib);
+			if ((dynamic.symtab().size / sizeof(elf_sym_t)) > 0)
+				msg("\n[BELF] Processing %i symbol table entries...\n", dynamic.symtab().size / sizeof(elf_sym_t));
+				load_symtab(dynamic.symtab(), symtab, strtab, dynlib);
 			/*
 			// .strtab section
-			msg("\n[BELF] Processing %i string table entries...\n", dynamic.strtab().size / sizeof(elf_sym_t));
-			load_strtab(reader, dyndata, dynamic.strtab());
+			if ((dynamic.strtab().size / sizeof(elf_sym_t)) > 0)	
+				msg("\n[BELF] Processing %i string table entries...\n", dynamic.strtab().size / sizeof(elf_sym_t));
+				load_strtab(reader, dyndata, dynamic.strtab());
 			*/
 			// .rela.dyn section
-			msg("\n[BELF] Processing %i relocation table entries...\n", (dynamic.rela().size / sizeof(elf_sym_t)));
-			load_reladyn(reader, dyndata, dynamic.rela());
+			if ((dynamic.rela().size / sizeof(elf_sym_t)) > 0)
+				msg("\n[BELF] Processing %i relocation table entries...\n", dynamic.rela().size / sizeof(elf_sym_t));
+				load_reladyn(reader, dyndata, dynamic.rela());
 		}
 
 		delete[] symtab;
